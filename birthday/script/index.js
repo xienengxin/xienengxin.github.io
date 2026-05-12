@@ -13,9 +13,9 @@ $(function () {
     function endTime(endDate) {
         var leftTime = new Date(endDate) - new Date(); //计算剩余的毫秒数
         if (leftTime <= 0) {
-            window.location.href = '../index3.html';
+            window.location.href = '../birthday/index3.html';
         } else if (leftTime <= 10000) {
-            window.location.href = '../index2.html';
+            window.location.href = '../birthday/index2.html';
         }
 
         var days = parseInt(leftTime / 1000 / 60 / 60 / 24, 10); //计算剩余的天数
