@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>魂斗罗 - Contra</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background: radial-gradient(ellipse at center, #1a1a3e 0%, #0a0a1e 50%, #000 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                    linear-gradient(45deg, transparent 40%, rgba(255, 0, 100, 0.05) 45%, transparent 50%),
+                    linear-gradient(-45deg, transparent 40%, rgba(0, 255, 255, 0.05) 45%, transparent 50%);
+            background-size: 100px 100px;
+            animation: bgScroll 20s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes bgScroll {
+            0% { background-position: 0 0, 0 0; }
+            100% { background-position: 100px 100px, -100px 100px; }
+        }
+
+        .game-container {
+            position: relative;
+            width: 960px;
+            height: 600px;
+            background: #000;
+            border-radius: 12px;
+            box-shadow:
+                    0 0 60px rgba(255, 0, 100, 0.3),
+                    0 0 100px rgba(0, 255, 255, 0.2),
+                    inset 0 0 60px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            border: 3px solid #333;
+        }
+
+        .game-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ff0066, #00ffff, #ff0066, #00ffff);
+            background-size: 400% 400%;
+            z-index: -1;
+            border-radius: 14px;
+            animation: borderGlow 3s ease infinite;
+            filter: blur(10px);
+        }
+
+        @keyframes borderGlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .game-header {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .score-panel {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 40, 0.95) 100%);
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: 2px solid;
+            border-image: linear-gradient(135deg, #ffd700, #ff9500) 1;
+            display: flex;
+            gap: 30px;
+            box-shadow:
+                    0 0 20px rgba(255, 215, 0, 0.3),
+                    inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .score-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .score-label {
+            font-size: 9px;
+            color: #ffd700;
+            margin-bottom: 2px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+        }
+
+        .score-value {
+            font-size: 24px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow:
+                    0 0 10px #ffd700,
+                    0 0 20px #ff9500,
+                    0 0 30px #ff6600;
+            font-family: 'Orbitron', monospace;
+            letter-spacing: 2px;
+        }
+
+        .health-bar {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(40, 0, 0, 0.95) 100%);
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: 2px solid;
+            border-image: linear-gradient(135deg, #ff4444, #ff0000) 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow:
+                    0 0 20px rgba(255, 68, 68, 0.4),
+                    inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .health-label {
+            font-size: 9px;
+            color: #ff4444;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 68, 68, 0.8);
+        }
+
+        .health-container {
+            display: flex;
+            gap: 8px;
+        }
+
+        .health-unit {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 50%, #dc3545 100%);
+            border-radius: 50%;
+            border: 3px solid #fff;
+            box-shadow:
+                    0 0 15px rgba(255, 68, 68, 1),
+                    inset 0 0 10px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+            position: relative;
+            animation: healthPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes healthPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 15px rgba(255, 68, 68, 1); }
+            50% { transform: scale(1.05); box-shadow: 0 0 25px rgba(255, 68, 68, 1.2); }
+        }
+
+        .health-unit::before {
+            content: '★';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+        }
+
+        .health-unit.lost {
+            background: linear-gradient(135deg, #555 0%, #333 100%);
+            box-shadow: none;
+            border-color: #666;
+            animation: none;
+        }
+
+        .health-unit.lost::before {
+            content: '☆';
+            color: #888;
+            text-shadow: none;
+        }
+
+        .modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal-title {
+            font-size: 64px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #ffd700 0%, #ff9500 50%, #ff6600 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            text-shadow: none;
+            letter-spacing: 8px;
+            animation: titleGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes titleGlow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8)); }
+            50% { filter: drop-shadow(0 0 40px rgba(255, 149, 0, 1)); }
+        }
+
+        .modal-subtitle {
+            font-size: 18px;
+            color: #00ffff;
+            margin-bottom: 50px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+        }
+
+        .modal-score {
+            font-size: 32px;
+            color: #fff;
+            margin-bottom: 40px;
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            letter-spacing: 2px;
+        }
+
+        .btn {
+            padding: 20px 70px;
+            font-size: 20px;
+            font-weight: 900;
+            color: #000;
+            background: linear-gradient(135deg, #ffd700 0%, #ff9500 100%);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow:
+                    0 0 30px rgba(255, 215, 0, 0.8),
+                    0 0 60px rgba(255, 149, 0, 0.6);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .btn:hover {
+            transform: scale(1.1);
+            box-shadow:
+                    0 0 40px rgba(255, 215, 0, 1),
+                    0 0 80px rgba(255, 149, 0, 0.9);
+        }
+
+        .controls-info {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 20, 40, 0.95) 100%);
+            padding: 10px 25px;
+            border-radius: 8px;
+            border: 2px solid #4a9eff;
+            font-size: 12px;
+            color: #4a9eff;
+            z-index: 10;
+            font-weight: 700;
+            letter-spacing: 2px;
+            box-shadow: 0 0 20px rgba(74, 158, 255, 0.4);
+        }
+
+        .controls-info span {
+            margin: 0 18px;
+        }
+
+        .powerup-indicator {
+            position: absolute;
+            bottom: 60px;
+            left: 15px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 40, 0, 0.95) 100%);
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            font-size: 12px;
+            font-weight: 700;
+            z-index: 10;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+        }
+
+        .level-complete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            font-weight: 900;
+            color: #ffd700;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 1);
+            letter-spacing: 5px;
+            z-index: 50;
+            animation: levelComplete 2s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes levelComplete {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="game-header">
+        <div class="score-panel">
+            <div class="score-item">
+                <div class="score-label">SCORE</div>
+                <div class="score-value" id="score">000000</div>
+            </div>
+            <div class="score-item">
+                <div class="score-label">LEVEL</div>
+                <div class="score-value" id="level">1</div>
+            </div>
+        </div>
+
+        <div class="health-bar">
+            <div class="health-label">LIVES</div>
+            <div class="health-container" id="health">
+                <div class="health-unit"></div>
+                <div class="health-unit"></div>
+                <div class="health-unit"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="powerup-indicator" id="powerup">NO POWERUP</div>
+
+    <div class="modal" id="startModal">
+        <div class="modal-title">CONTRA</div>
+        <div class="modal-subtitle">魂斗罗 - 终极射击体验</div>
+        <button class="btn" onclick="startGame()">开始游戏</button>
+    </div>
+
+    <div class="modal hidden" id="gameOverModal">
+        <div class="modal-title">GAME OVER</div>
+        <div class="modal-score" id="finalScore">SCORE: 000000</div>
+        <button class="btn" onclick="restartGame()">继续挑战</button>
+    </div>
+
+    <div class="controls-info">
+        <span>← → 移动</span>
+        <span>↑ 跳跃</span>
+        <span>空格 射击</span>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = 960;
+    canvas.height = 600;
+
+    let gameRunning = false;
+    let score = 0;
+    let level = 1;
+    let health = 3;
+    let gameTime = 0;
+    let cameraX = 0;
+    const levelWidth = 5000;
+
+    const player = {
+        x: 100,
+        y: 400,
+        width: 40,
+        height: 56,
+        velocityX: 0,
+        velocityY: 0,
+        speed: 5,
+        jumpPower: -14,
+        gravity: 0.7,
+        onGround: false,
+        direction: 1,
+        shootCooldown: 0,
+        invincible: 0,
+        powerup: null,
+        powerupTimer: 0,
+        animFrame: 0
+    };
+
+    const POWERUP_TYPES = {
+        SPREAD: 'S',
+        RAPID: 'R',
+        SHIELD: 'B'
+    };
+
+    let bullets = [];
+    let enemies = [];
+    let platforms = [];
+    let particles = [];
+    let powerups = [];
+    let explosions = [];
+    let stars = [];
+
+    const keys = { left: false, right: false, up: false, space: false };
+
+    // 初始化背景星星
+    function initStars() {
+        stars = [];
+        for (let i = 0; i < 200; i++) {
+            stars.push({
+                x: Math.random() * levelWidth,
+                y: Math.random() * 400,
+                size: Math.random() * 2 + 0.5,
+                speed: Math.random() * 0.5 + 0.1,
+                brightness: Math.random()
+            });
+        }
+    }
+
+    function initPlatforms() {
+        platforms = [
+            { x: 0, y: 540, width: levelWidth, height: 60, type: 'ground' },
+            { x: 250, y: 460, width: 130, height: 20, type: 'platform' },
+            { x: 480, y: 390, width: 110, height: 20, type: 'platform' },
+            { x: 720, y: 320, width: 160, height: 20, type: 'platform' },
+            { x: 980, y: 400, width: 130, height: 20, type: 'platform' },
+            { x: 1230, y: 460, width: 110, height: 20, type: 'platform' },
+            { x: 1480, y: 300, width: 190, height: 20, type: 'platform' },
+            { x: 1780, y: 370, width: 130, height: 20, type: 'platform' },
+            { x: 2080, y: 460, width: 160, height: 20, type: 'platform' },
+            { x: 2380, y: 280, width: 210, height: 20, type: 'platform' },
+            { x: 2730, y: 350, width: 130, height: 20, type: 'platform' },
+            { x: 2980, y: 420, width: 160, height: 20, type: 'platform' },
+            { x: 3280, y: 300, width: 190, height: 20, type: 'platform' },
+            { x: 3580, y: 380, width: 130, height: 20, type: 'platform' },
+            { x: 3880, y: 460, width: 160, height: 20, type: 'platform' },
+            { x: 4180, y: 310, width: 210, height: 20, type: 'platform' },
+            { x: 4530, y: 400, width: 130, height: 20, type: 'platform' },
+        ];
+    }
+
+    function spawnEnemy() {
+        const baseX = cameraX + canvas.width + Math.random() * 300;
+        if (baseX > levelWidth - 200) return;
+
+        const types = ['runner', 'turret', 'flying'];
+        const type = types[Math.floor(Math.random() * types.length)];
+
+        enemies.push({
+            x: baseX,
+            y: type === 'flying' ? 180 : 484,
+            width: type === 'flying' ? 40 : 36,
+            height: type === 'flying' ? 40 : 52,
+            velocityX: type === 'runner' ? -1.8 - level * 0.25 : 0,
+            velocityY: 0,
+            type: type,
+            health: type === 'turret' ? 3 : 1,
+            shootCooldown: type === 'turret' ? 80 : 140,
+            direction: -1,
+            points: type === 'flying' ? 200 : type === 'turret' ? 100 : 50,
+            animFrame: 0
+        });
+    }
+
+    function spawnPowerup(x, y) {
+        if (Math.random() > 0.35) return;
+
+        const types = Object.values(POWERUP_TYPES);
+        const type = types[Math.floor(Math.random() * types.length)];
+
+        powerups.push({
+            x: x,
+            y: y,
+            width: 32,
+            height: 32,
+            type: type,
+            velocityY: -3,
+            glowPhase: Math.random() * Math.PI * 2
+        });
+    }
+
+    function shoot() {
+        if (player.shootCooldown > 0) return;
+
+        if (player.powerup === POWERUP_TYPES.SPREAD) {
+            for (let i = -1; i <= 1; i++) {
+                bullets.push({
+                    x: player.x + player.width / 2,
+                    y: player.y + player.height / 2,
+                    width: 14,
+                    height: 6,
+                    velocityX: player.direction * 11,
+                    velocityY: i * 2.5,
+                    isPlayer: true,
+                    trail: []
+                });
+            }
+            player.shootCooldown = 14;
+        } else {
+            bullets.push({
+                x: player.x + (player.direction === 1 ? player.width : 0),
+                y: player.y + player.height / 2 - 3,
+                width: 18,
+                height: 7,
+                velocityX: player.direction * 13,
+                velocityY: 0,
+                isPlayer: true,
+                trail: []
+            });
+            player.shootCooldown = player.powerup === POWERUP_TYPES.RAPID ? 4 : 8;
+        }
+    }
+
+    function enemyShoot(enemy) {
+        const dx = player.x - enemy.x;
+        const dy = player.y - enemy.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        bullets.push({
+            x: enemy.x,
+            y: enemy.y + enemy.height / 2,
+            width: 12,
+            height: 12,
+            velocityX: (dx / dist) * 5,
+            velocityY: (dy / dist) * 5,
+            isPlayer: false,
+            trail: []
+        });
+    }
+
+    function createParticles(x, y, color, count = 15) {
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 / count) * i;
+            const speed = Math.random() * 6 + 2;
+            particles.push({
+                x: x,
+                y: y,
+                velocityX: Math.cos(angle) * speed,
+                velocityY: Math.sin(angle) * speed,
+                size: Math.random() * 6 + 2,
+                color: color,
+                life: 50,
+                maxLife: 50
+            });
+        }
+    }
+
+    function createExplosion(x, y) {
+        explosions.push({
+            x: x,
+            y: y,
+            radius: 10,
+            maxRadius: 60,
+            life: 30,
+            maxLife: 30
+        });
+        createParticles(x, y, '#ff6600', 30);
+        createParticles(x, y, '#ffff00', 20);
+    }
+
+    function checkCollision(a, b) {
+        return a.x < b.x + b.width &&
+            a.x + a.width > b.x &&
+            a.y < b.y + b.height &&
+            a.y + a.height > b.y;
+    }
+
+    function update() {
+        if (!gameRunning) return;
+
+        gameTime++;
+        player.animFrame = (player.animFrame + 0.2) % 4;
+
+        if (keys.left) {
+            player.velocityX = -player.speed;
+            player.direction = -1;
+        } else if (keys.right) {
+            player.velocityX = player.speed;
+            player.direction = 1;
+        } else {
+            player.velocityX *= 0.75;
+        }
+
+        if (keys.up && player.onGround) {
+            player.velocityY = player.jumpPower;
+            player.onGround = false;
+        }
+
+        player.velocityY += player.gravity;
+        player.x += player.velocityX;
+        player.y += player.velocityY;
+
+        if (player.shootCooldown > 0) player.shootCooldown--;
+        if (player.invincible > 0) player.invincible--;
+
+        if (player.powerupTimer > 0) {
+            player.powerupTimer--;
+            if (player.powerupTimer <= 0) {
+                player.powerup = null;
+                updatePowerupUI();
+            }
+        }
+
+        const targetCameraX = player.x - canvas.width / 3;
+        if (targetCameraX < 0) {
+            cameraX = 0;
+        } else if (targetCameraX > levelWidth - canvas.width) {
+            cameraX = levelWidth - canvas.width;
+        } else {
+            cameraX += (targetCameraX - cameraX) * 0.12;
+        }
+
+        player.onGround = false;
+        for (const platform of platforms) {
+            if (checkCollision(player, platform)) {
+                if (player.velocityY > 0 && player.y + player.height - player.velocityY <= platform.y) {
+                    player.y = platform.y - player.height;
+                    player.velocityY = 0;
+                    player.onGround = true;
+                }
+            }
+        }
+
+        if (player.x < 0) player.x = 0;
+        if (player.x > levelWidth - player.width) {
+            player.x = levelWidth - player.width;
+            player.velocityX = 0;
+        }
+        if (player.y > canvas.height - player.height) {
+            player.y = canvas.height - player.height;
+            player.onGround = true;
+        }
+
+        if (keys.space) shoot();
+
+        if (gameTime % Math.max(50, 140 - level * 12) === 0) spawnEnemy();
+
+        if (gameTime % 550 === 0) {
+            const powerupX = cameraX + canvas.width - 100;
+            const powerupY = 280 + Math.random() * 180;
+            spawnPowerup(powerupX, powerupY);
+        }
+
+        bullets = bullets.filter(bullet => {
+            bullet.trail.push({ x: bullet.x, y: bullet.y });
+            if (bullet.trail.length > 5) bullet.trail.shift();
+
+            bullet.x += bullet.velocityX;
+            bullet.y += bullet.velocityY || 0;
+            return bullet.x > cameraX - 50 && bullet.x < cameraX + canvas.width + 50 &&
+                bullet.y > -50 && bullet.y < canvas.height + 50;
+        });
+
+        enemies = enemies.filter(enemy => {
+            enemy.animFrame = (enemy.animFrame + 0.15) % 4;
+
+            if (enemy.type === 'runner') {
+                enemy.x += enemy.velocityX;
+            } else if (enemy.type === 'flying') {
+                enemy.x += enemy.velocityX - 1.2;
+                enemy.y += Math.sin(gameTime * 0.04) * 2.5;
+            }
+
+            enemy.shootCooldown--;
+            if (enemy.shootCooldown <= 0 && enemy.x > cameraX && enemy.x < cameraX + canvas.width) {
+                enemyShoot(enemy);
+                enemy.shootCooldown = enemy.type === 'turret' ? 80 : 140;
+            }
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                if (bullet.isPlayer && checkCollision(bullet, enemy)) {
+                    enemy.health--;
+                    bullets.splice(i, 1);
+                    createParticles(bullet.x, bullet.y, '#ffaa00', 12);
+
+                    if (enemy.health <= 0) {
+                        score += enemy.points;
+                        createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+                        spawnPowerup(enemy.x, enemy.y);
+                        updateUI();
+                        return false;
+                    }
+                }
+            }
+
+            if (checkCollision(player, enemy) && player.invincible === 0 && player.powerup !== POWERUP_TYPES.SHIELD) {
+                health--;
+                player.invincible = 90;
+                createParticles(player.x + player.width / 2, player.y + player.height / 2, '#ff0000', 25);
+                updateUI();
+
+                if (health <= 0) gameOver();
+                return false;
+            }
+
+            return enemy.x > cameraX - 200;
+        });
+
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            const bullet = bullets[i];
+            if (!bullet.isPlayer && checkCollision(bullet, player) && player.invincible === 0) {
+                if (player.powerup === POWERUP_TYPES.SHIELD) {
+                    bullets.splice(i, 1);
+                    createParticles(player.x + player.width / 2, player.y + player.height / 2, '#00ff88', 15);
+                } else {
+                    health--;
+                    player.invincible = 90;
+                    bullets.splice(i, 1);
+                    createParticles(player.x + player.width / 2, player.y + player.height / 2, '#ff0000', 25);
+                    updateUI();
+
+                    if (health <= 0) gameOver();
+                }
+            }
+        }
+
+        powerups = powerups.filter(powerup => {
+            powerup.velocityY += 0.12;
+            powerup.y += powerup.velocityY;
+            powerup.glowPhase += 0.08;
+
+            for (const platform of platforms) {
+                if (powerup.y + powerup.height > platform.y &&
+                    powerup.y + powerup.height - powerup.velocityY <= platform.y &&
+                    powerup.x + powerup.width > platform.x &&
+                    powerup.x < platform.x + platform.width) {
+                    powerup.y = platform.y - powerup.height;
+                    powerup.velocityY = 0;
+                }
+            }
+
+            if (checkCollision(player, powerup)) {
+                player.powerup = powerup.type;
+                player.powerupTimer = 600;
+                createParticles(powerup.x + powerup.width / 2, powerup.y + powerup.height / 2, '#00ff88', 30);
+                updatePowerupUI();
+                return false;
+            }
+
+            return powerup.x > cameraX - 100 && powerup.x < cameraX + canvas.width + 100;
+        });
+
+        particles = particles.filter(particle => {
+            particle.x += particle.velocityX;
+            particle.y += particle.velocityY;
+            particle.velocityY += 0.2;
+            particle.life--;
+            particle.size *= 0.97;
+            return particle.life > 0;
+        });
+
+        explosions = explosions.filter(exp => {
+            exp.radius += 2.5;
+            exp.life--;
+            return exp.life > 0;
+        });
+
+        if (score >= level * 1000) {
+            level++;
+            updateUI();
+        }
+
+        if (player.x >= levelWidth - player.width - 10) {
+            score += 500;
+            level++;
+            updateUI();
+            player.x = 100;
+            player.y = 400;
+            cameraX = 0;
+            enemies = enemies.filter(enemy => enemy.x > cameraX + canvas.width + 200);
+
+            const levelComplete = document.createElement('div');
+            levelComplete.className = 'level-complete';
+            levelComplete.textContent = `LEVEL ${level - 1} COMPLETE!`;
+            document.querySelector('.game-container').appendChild(levelComplete);
+            setTimeout(() => levelComplete.remove(), 2000);
+
+            createParticles(player.x, player.y, '#ffd700', 50);
+        }
+    }
+
+    function drawBackground() {
+        // 深空渐变背景
+        const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        skyGradient.addColorStop(0, '#0a0a1e');
+        skyGradient.addColorStop(0.5, '#151530');
+        skyGradient.addColorStop(1, '#202050');
+        ctx.fillStyle = skyGradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 绘制星星（视差滚动）
+        stars.forEach(star => {
+            const screenX = (star.x - cameraX * star.speed) % canvas.width;
+            const alpha = 0.3 + Math.sin(gameTime * 0.02 + star.brightness * Math.PI * 2) * 0.3;
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(screenX < 0 ? screenX + canvas.width : screenX, star.y, star.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // 远景山脉（视差滚动）
+        ctx.fillStyle = '#1a1a3a';
+        for (let i = 0; i < 16; i++) {
+            const bgX = (i * 350 - cameraX * 0.25) % (levelWidth * 0.3);
+            ctx.beginPath();
+            ctx.moveTo(bgX - 350, 600);
+            ctx.lineTo(bgX - 250, 350);
+            ctx.lineTo(bgX - 150, 450);
+            ctx.lineTo(bgX - 50, 320);
+            ctx.lineTo(bgX + 50, 420);
+            ctx.lineTo(bgX + 150, 380);
+            ctx.lineTo(bgX + 350, 600);
+            ctx.fill();
+        }
+
+        // 中景建筑（视差滚动）
+        ctx.fillStyle = '#252550';
+        for (let i = 0; i < 20; i++) {
+            const bgX = (i * 280 - cameraX * 0.5) % (levelWidth * 0.6);
+            const height = 150 + Math.sin(i * 2.5) * 100;
+            ctx.fillRect(bgX, 540 - height, 100, height);
+        }
+    }
+
+    function drawPlatforms() {
+        platforms.forEach(platform => {
+            const screenX = platform.x - cameraX;
+            if (screenX > -platform.width && screenX < canvas.width) {
+                if (platform.type === 'ground') {
+                    // 地面
+                    const gradient = ctx.createLinearGradient(0, platform.y, 0, platform.y + platform.height);
+                    gradient.addColorStop(0, '#4a5568');
+                    gradient.addColorStop(0.3, '#3d4454');
+                    gradient.addColorStop(1, '#2d3748');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(screenX, platform.y, Math.min(platform.width, canvas.width - screenX), platform.height);
+
+                    // 地面纹理
+                    ctx.strokeStyle = '#5a6578';
+                    ctx.lineWidth = 2;
+                    for (let x = screenX; x < screenX + platform.width && x < canvas.width; x += 40) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, platform.y);
+                        ctx.lineTo(x, platform.y + 25);
+                        ctx.stroke();
+                    }
+                } else {
+                    // 空中平台
+                    const gradient = ctx.createLinearGradient(screenX, platform.y, screenX, platform.y + platform.height);
+                    gradient.addColorStop(0, '#6b7280');
+                    gradient.addColorStop(0.5, '#5a6070');
+                    gradient.addColorStop(1, '#4a5060');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(screenX, platform.y, platform.width, platform.height);
+
+                    ctx.strokeStyle = '#9ca3af';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(screenX, platform.y, platform.width, platform.height);
+
+                    // 平台发光效果
+                    ctx.shadowColor = 'rgba(100, 150, 255, 0.3)';
+                    ctx.shadowBlur = 10;
+                    ctx.strokeRect(screenX + 2, platform.y + 2, platform.width - 4, platform.height - 4);
+                    ctx.shadowBlur = 0;
+                }
+            }
+        });
+    }
+
+    function drawPlayer(screenX, screenY) {
+        if (player.invincible > 0 && Math.floor(player.invincible / 4) % 2 === 0) return;
+
+        ctx.save();
+        ctx.translate(screenX + player.width / 2, screenY + player.height / 2);
+        ctx.scale(player.direction, 1);
+
+        // 阴影
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(0, player.height / 2 + 5, 20, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 腿部动画
+        const legOffset = Math.sin(player.animFrame * Math.PI / 2) * 3;
+
+        // 裤子（蓝色）
+        ctx.fillStyle = '#1a40ff';
+        ctx.fillRect(-14, 18 + legOffset, 12, 16);
+        ctx.fillRect(2, 18 - legOffset, 12, 16);
+
+        // 裤子细节
+        ctx.fillStyle = '#0f30cc';
+        ctx.fillRect(-14, 30 + legOffset, 12, 4);
+        ctx.fillRect(2, 30 - legOffset, 12, 4);
+
+        // 靴子（棕色）
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(-16, 32 + legOffset, 14, 8);
+        ctx.fillRect(2, 32 - legOffset, 14, 8);
+
+        // 身体（红色上衣）
+        const bodyGradient = ctx.createLinearGradient(-12, -10, 12, 20);
+        bodyGradient.addColorStop(0, '#ff2222');
+        bodyGradient.addColorStop(1, '#cc1111');
+        ctx.fillStyle = bodyGradient;
+        ctx.fillRect(-12, -12, 24, 32);
+
+        // 身体阴影
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillRect(-8, -8, 16, 24);
+
+        // 头部
+        ctx.fillStyle = '#ffcc99';
+        ctx.beginPath();
+        ctx.arc(0, -18, 11, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 头发（棕色短发）
+        ctx.fillStyle = '#5a3820';
+        ctx.beginPath();
+        ctx.arc(0, -22, 10, Math.PI, 0);
+        ctx.fill();
+
+        // 墨镜
+        ctx.fillStyle = '#111';
+        ctx.fillRect(-9, -20, 8, 5);
+        ctx.fillRect(2, -20, 7, 5);
+
+        // 墨镜反光
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillRect(-8, -19, 3, 2);
+        ctx.fillRect(3, -19, 3, 2);
+
+        // 胳膊（红色）
+        ctx.fillStyle = '#ff2222';
+        ctx.fillRect(-18, -6, 8, 20);
+        ctx.fillRect(10, -6, 8, 20);
+
+        // 手套（肤色）
+        ctx.fillStyle = '#ffcc99';
+        ctx.beginPath();
+        ctx.arc(-14, 14, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(14, 14, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 枪（黑色突击步枪）
+        ctx.fillStyle = '#2a2a2a';
+        ctx.fillRect(12, 4, 32, 8);
+
+        // 枪细节
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(40, 5, 4, 6);
+        ctx.fillStyle = '#3a3a3a';
+        ctx.fillRect(16, 3, 8, 2);
+        ctx.fillRect(16, 11, 8, 2);
+
+        // 护盾效果
+        if (player.powerup === POWERUP_TYPES.SHIELD) {
+            const shieldAlpha = 0.25 + Math.sin(gameTime * 0.15) * 0.15;
+            ctx.strokeStyle = `rgba(0, 255, 136, ${shieldAlpha})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 8, 38, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.strokeStyle = `rgba(0, 255, 200, ${shieldAlpha * 0.5})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 8, 42, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+
+    function drawEnemy(enemy) {
+        const screenX = enemy.x - cameraX;
+
+        ctx.save();
+
+        if (enemy.type === 'runner') {
+            ctx.translate(screenX + enemy.width / 2, enemy.y + enemy.height / 2);
+
+            // 阴影
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(0, enemy.height / 2 + 3, 15, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 腿部动画
+            const legOffset = Math.sin(enemy.animFrame * Math.PI / 2) * 4;
+
+            // 身体
+            const bodyGradient = ctx.createLinearGradient(-10, -8, 10, 16);
+            bodyGradient.addColorStop(0, '#555');
+            bodyGradient.addColorStop(1, '#333');
+            ctx.fillStyle = bodyGradient;
+            ctx.fillRect(-10, -10, 20, 28);
+
+            // 装甲
+            ctx.fillStyle = '#666';
+            ctx.fillRect(-8, -6, 16, 16);
+
+            // 头部
+            ctx.fillStyle = '#ffcc99';
+            ctx.beginPath();
+            ctx.arc(0, -16, 9, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 头盔
+            ctx.fillStyle = '#4a5568';
+            ctx.beginPath();
+            ctx.arc(0, -18, 10, Math.PI, 0);
+            ctx.fill();
+
+            // 护目镜
+            ctx.fillStyle = '#ff4444';
+            ctx.fillRect(-6, -18, 12, 4);
+
+            // 枪
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(-22, 0, 28, 6);
+
+        } else if (enemy.type === 'turret') {
+            ctx.translate(screenX, enemy.y);
+
+            // 阴影
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.beginPath();
+            ctx.ellipse(enemy.width / 2, enemy.height, 20, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 底座
+            const baseGradient = ctx.createLinearGradient(0, 0, enemy.width, enemy.height);
+            baseGradient.addColorStop(0, '#5a6070');
+            baseGradient.addColorStop(1, '#3a4050');
+            ctx.fillStyle = baseGradient;
+            ctx.fillRect(0, 0, enemy.width, enemy.height);
+
+            // 底座纹理
+            ctx.strokeStyle = '#7a8090';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(5, 10 + i * 15);
+                ctx.lineTo(enemy.width - 5, 10 + i * 15);
+                ctx.stroke();
+            }
+
+            // 炮管
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(-20, enemy.height / 2 - 6, 25, 12);
+
+            // 炮管发光
+            ctx.fillStyle = '#ff6600';
+            ctx.beginPath();
+            ctx.arc(-16, enemy.height / 2, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 装饰灯
+            ctx.fillStyle = Math.sin(gameTime * 0.1) > 0 ? '#ff0000' : '#cc0000';
+            ctx.beginPath();
+            ctx.arc(enemy.width / 2, enemy.height / 2, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 装饰灯光晕
+            ctx.shadowColor = '#ff0000';
+            ctx.shadowBlur = 15;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+        } else if (enemy.type === 'flying') {
+            ctx.translate(screenX + enemy.width / 2, enemy.y + enemy.height / 2);
+
+            // 机身
+            const bodyGradient = ctx.createLinearGradient(-18, 0, 18, 0);
+            bodyGradient.addColorStop(0, '#8844ff');
+            bodyGradient.addColorStop(0.5, '#aa66ff');
+            bodyGradient.addColorStop(1, '#8844ff');
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 18, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 驾驶舱
+            const cockpitGradient = ctx.createLinearGradient(0, -8, 0, 8);
+            cockpitGradient.addColorStop(0, '#88ddff');
+            cockpitGradient.addColorStop(1, '#44aadd');
+            ctx.fillStyle = cockpitGradient;
+            ctx.beginPath();
+            ctx.ellipse(6, 0, 10, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 驾驶舱反光
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.beginPath();
+            ctx.ellipse(4, -3, 4, 3, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 螺旋桨（旋转动画）
+            const propAngle = gameTime * 0.5;
+            ctx.save();
+            ctx.translate(-18, 0);
+            ctx.rotate(propAngle);
+
+            ctx.fillStyle = '#aaa';
+            ctx.fillRect(-3, -22, 6, 44);
+            ctx.fillRect(-22, -3, 44, 6);
+
+            ctx.fillStyle = '#888';
+            ctx.fillRect(-2, -18, 4, 36);
+            ctx.fillRect(-18, -2, 36, 4);
+
+            ctx.restore();
+
+            // 引擎发光
+            ctx.fillStyle = '#00ffff';
+            ctx.beginPath();
+            ctx.arc(-15, 0, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        ctx.restore();
+    }
+
+    function drawPowerup(powerup) {
+        const screenX = powerup.x - cameraX;
+
+        ctx.save();
+        ctx.translate(screenX + powerup.width / 2, powerup.y + powerup.height / 2);
+
+        const glowIntensity = 0.6 + Math.sin(powerup.glowPhase) * 0.4;
+
+        // 外发光
+        const glowColor = powerup.type === POWERUP_TYPES.SPREAD ? '255, 102, 0' :
+            powerup.type === POWERUP_TYPES.RAPID ? '255, 204, 0' : '0, 255, 136';
+
+        ctx.shadowColor = `rgb(${glowColor})`;
+        ctx.shadowBlur = 20 * glowIntensity;
+
+        // 背景框
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillRect(-16, -16, 32, 32);
+
+        // 边框
+        ctx.strokeStyle = `rgb(${glowColor})`;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(-16, -16, 32, 32);
+
+        // 内发光
+        ctx.fillStyle = `rgba(${glowColor}, ${0.3 * glowIntensity})`;
+        ctx.fillRect(-14, -14, 28, 28);
+
+        // 字母
+        ctx.fillStyle = `rgb(${glowColor})`;
+        ctx.font = 'bold 22px Orbitron';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(powerup.type, 0, 0);
+
+        ctx.shadowBlur = 0;
+        ctx.restore();
+    }
+
+    function drawBullets() {
+        bullets.forEach(bullet => {
+            const screenX = bullet.x - cameraX;
+
+            if (bullet.isPlayer) {
+                // 玩家子弹轨迹
+                bullet.trail.forEach((pos, i) => {
+                    const alpha = (i / bullet.trail.length) * 0.5;
+                    const trailX = pos.x - cameraX;
+
+                    ctx.fillStyle = `rgba(255, 200, 100, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.ellipse(trailX + bullet.width / 2, pos.y + bullet.height / 2,
+                        bullet.width / 2, bullet.height / 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                // 主子弹
+                const gradient = ctx.createRadialGradient(
+                    screenX + bullet.width / 2, bullet.y + bullet.height / 2, 0,
+                    screenX + bullet.width / 2, bullet.y + bullet.height / 2, bullet.width * 1.5
+                );
+                gradient.addColorStop(0, '#ffffff');
+                gradient.addColorStop(0.3, '#ffdd66');
+                gradient.addColorStop(0.6, '#ff9900');
+                gradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.ellipse(screenX + bullet.width / 2, bullet.y + bullet.height / 2,
+                    bullet.width, bullet.height * 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 核心高光
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.ellipse(screenX + bullet.width / 2, bullet.y + bullet.height / 2,
+                    bullet.width / 3, bullet.height / 3, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else {
+                // 敌人子弹
+                const gradient = ctx.createRadialGradient(
+                    screenX + bullet.width / 2, bullet.y + bullet.height / 2, 0,
+                    screenX + bullet.width / 2, bullet.y + bullet.height / 2, bullet.width
+                );
+                gradient.addColorStop(0, '#ff8888');
+                gradient.addColorStop(0.5, '#ff4444');
+                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(screenX + bullet.width / 2, bullet.y + bullet.height / 2,
+                    bullet.width / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+    }
+
+    function drawParticles() {
+        particles.forEach(particle => {
+            const alpha = particle.life / particle.maxLife;
+            ctx.globalAlpha = alpha;
+
+            const gradient = ctx.createRadialGradient(
+                particle.x - cameraX, particle.y, 0,
+                particle.x - cameraX, particle.y, particle.size
+            );
+            gradient.addColorStop(0, particle.color);
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(particle.x - cameraX, particle.y, particle.size, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    function drawExplosions() {
+        explosions.forEach(exp => {
+            const alpha = exp.life / exp.maxLife;
+            const progress = 1 - alpha;
+
+            ctx.globalAlpha = alpha;
+
+            // 外圈
+            ctx.fillStyle = `rgba(255, 100, 0, ${alpha * 0.5})`;
+            ctx.beginPath();
+            ctx.arc(exp.x - cameraX, exp.y, exp.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 中圈
+            ctx.fillStyle = `rgba(255, 200, 0, ${alpha * 0.7})`;
+            ctx.beginPath();
+            ctx.arc(exp.x - cameraX, exp.y, exp.radius * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 内圈
+            ctx.fillStyle = `rgba(255, 255, 200, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(exp.x - cameraX, exp.y, exp.radius * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.globalAlpha = 1;
+        });
+    }
+
+    function draw() {
+        drawBackground();
+        drawPlatforms();
+
+        // 绘制道具
+        powerups.forEach(powerup => drawPowerup(powerup));
+
+        // 绘制敌人
+        enemies.forEach(enemy => drawEnemy(enemy));
+
+        // 绘制玩家
+        drawPlayer(player.x - cameraX, player.y);
+
+        // 绘制子弹
+        drawBullets();
+
+        // 绘制粒子
+        drawParticles();
+
+        // 绘制爆炸
+        drawExplosions();
+
+        // 进度条
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillRect(0, canvas.height - 4, canvas.width, 4);
+
+        const progressGradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+        progressGradient.addColorStop(0, '#ff0066');
+        progressGradient.addColorStop(0.5, '#ffd700');
+        progressGradient.addColorStop(1, '#00ffff');
+        ctx.fillStyle = progressGradient;
+        ctx.fillRect(0, canvas.height - 4, (cameraX / levelWidth) * canvas.width, 4);
+    }
+
+    function updatePowerupUI() {
+        const powerupElement = document.getElementById('powerup');
+        if (player.powerup) {
+            const names = { 'S': '散弹枪', 'R': '快速射击', 'B': '护盾' };
+            powerupElement.textContent = names[player.powerup] + ' (' + Math.ceil(player.powerupTimer / 60) + 's)';
+            powerupElement.style.borderColor = player.powerup === 'B' ? '#00ff88' : player.powerup === 'S' ? '#ff6600' : '#ffcc00';
+            powerupElement.style.color = player.powerup === 'B' ? '#00ff88' : player.powerup === 'S' ? '#ff6600' : '#ffcc00';
+        } else {
+            powerupElement.textContent = '无道具';
+            powerupElement.style.borderColor = '#00ff88';
+            powerupElement.style.color = '#00ff88';
+        }
+    }
+
+    function gameLoop() {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function updateUI() {
+        const scoreText = String(score).padStart(6, '0');
+        document.getElementById('score').textContent = scoreText;
+        document.getElementById('level').textContent = level;
+
+        const healthContainer = document.getElementById('health');
+        healthContainer.innerHTML = '';
+        for (let i = 0; i < 3; i++) {
+            const healthUnit = document.createElement('div');
+            healthUnit.className = 'health-unit' + (i >= health ? ' lost' : '');
+            healthContainer.appendChild(healthUnit);
+        }
+    }
+
+    function startGame() {
+        document.getElementById('startModal').classList.add('hidden');
+        document.getElementById('gameOverModal').classList.add('hidden');
+
+        score = 0;
+        level = 1;
+        health = 3;
+        gameTime = 0;
+        cameraX = 0;
+        gameRunning = true;
+
+        player.x = 100;
+        player.y = 400;
+        player.velocityX = 0;
+        player.velocityY = 0;
+        player.direction = 1;
+        player.invincible = 0;
+        player.powerup = null;
+        player.powerupTimer = 0;
+
+        bullets = [];
+        enemies = [];
+        particles = [];
+        powerups = [];
+        explosions = [];
+
+        initStars();
+        initPlatforms();
+        updateUI();
+        updatePowerupUI();
+    }
+
+    function gameOver() {
+        gameRunning = false;
+        const scoreText = String(score).padStart(6, '0');
+        document.getElementById('finalScore').textContent = 'SCORE: ' + scoreText;
+        document.getElementById('gameOverModal').classList.remove('hidden');
+    }
+
+    function restartGame() {
+        startGame();
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+        if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+        if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = true;
+        if (e.key === ' ') {
+            keys.space = true;
+            e.preventDefault();
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+        if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+        if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = false;
+        if (e.key === ' ') keys.space = false;
+    });
+
+    gameLoop();
+</script>
+</body>
+</html>
