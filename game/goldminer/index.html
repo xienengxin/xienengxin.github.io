@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>黄金矿工 · 梅西</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #1a1200; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Microsoft YaHei', sans-serif; overflow: hidden; }
+        #gameContainer { position: relative; width: 480px; height: 720px; }
+        canvas { display: block; border: 2px solid #3a2a10; box-shadow: 0 0 30px rgba(200,150,0,0.2); }
+        #selectScreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(180deg, #1a1200, #2a1a00);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10;
+        }
+        #selectScreen h1 { color: #ffc107; font-size: 38px; text-shadow: 0 0 20px rgba(255,193,7,0.5); letter-spacing: 6px; }
+        #selectScreen .subtitle { color: #8a6a00; font-size: 14px; letter-spacing: 4px; margin-bottom: 10px; }
+        #selectScreen .messi-preview { margin: 20px 0; }
+        #startBtn {
+            padding: 14px 60px; background: linear-gradient(135deg, #e6a800, #ffc107);
+            border: none; border-radius: 8px; color: #1a1200; font-size: 20px; font-weight: bold;
+            cursor: pointer; letter-spacing: 6px; transition: all 0.3s; box-shadow: 0 4px 20px rgba(255,193,7,0.4);
+        }
+        #startBtn:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(255,193,7,0.6); }
+        .controls-hint { color: #5a4a00; font-size: 11px; margin-top: 15px; text-align: center; line-height: 1.8; }
+
+        #shopScreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10,8,0,0.95); display: none; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 10;
+        }
+        #shopScreen h2 { color: #ffc107; font-size: 28px; margin-bottom: 20px; }
+        .shop-items { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+        .shop-item {
+            background: rgba(255,193,7,0.08); border: 1px solid #3a2a10; border-radius: 10px;
+            padding: 12px 20px; display: flex; align-items: center; gap: 15px; width: 350px; cursor: pointer; transition: all 0.3s;
+        }
+        .shop-item:hover { border-color: #ffc107; background: rgba(255,193,7,0.15); }
+        .shop-item .item-icon { font-size: 28px; }
+        .shop-item .item-info { flex: 1; }
+        .shop-item .item-name { color: #e0e0e0; font-size: 15px; }
+        .shop-item .item-desc { color: #8a7a5a; font-size: 11px; }
+        .shop-item .item-price { color: #ffc107; font-size: 16px; font-weight: bold; }
+        .shop-money { color: #ffc107; font-size: 18px; margin-bottom: 20px; }
+        #nextLevelBtn {
+            padding: 14px 55px; background: linear-gradient(135deg, #2e7d32, #4caf50);
+            border: none; border-radius: 10px; color: white; font-size: 18px;
+            cursor: pointer; letter-spacing: 4px; transition: all 0.3s;
+        }
+        #nextLevelBtn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(76,175,80,0.5); }
+
+        #gameOverScreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10,8,0,0.92); display: none; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 10;
+        }
+        #gameOverScreen h2 { color: #e53935; font-size: 36px; margin-bottom: 10px; }
+        #gameOverScreen .info { color: #e0e0e0; font-size: 18px; margin-bottom: 8px; }
+        #restartBtn, #menuBtn2 {
+            padding: 14px 55px; border: none; border-radius: 10px;
+            color: white; font-size: 17px; cursor: pointer; letter-spacing: 4px;
+            transition: all 0.3s; margin-bottom: 10px;
+        }
+        #restartBtn { background: linear-gradient(135deg, #e6a800, #ffc107); color: #1a1200; box-shadow: 0 4px 20px rgba(255,193,7,0.4); }
+        #restartBtn:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(255,193,7,0.6); }
+        #menuBtn2 { background: linear-gradient(135deg, #3a2a10, #5a4a20); box-shadow: 0 4px 20px rgba(90,74,32,0.4); }
+        #menuBtn2:hover { transform: translateY(-2px); }
+
+        #levelComplete {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10,8,0,0.9); display: none; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 10;
+        }
+        #levelComplete h2 { color: #4caf50; font-size: 32px; margin-bottom: 10px; }
+        #levelComplete .info { color: #e0e0e0; font-size: 18px; margin-bottom: 20px; }
+        #levelComplete .shop-btn {
+            padding: 14px 55px; background: linear-gradient(135deg, #2e7d32, #4caf50);
+            border: none; border-radius: 10px; color: white; font-size: 18px;
+            cursor: pointer; letter-spacing: 4px; transition: all 0.3s;
+        }
+        #levelComplete .shop-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(76,175,80,0.5); }
+
+        .screen-back {
+            align-self: flex-start;
+            color: #8a6a00; font-size: 12px; text-decoration: none;
+            padding: 5px 12px; border-radius: 6px;
+            border: 1px solid rgba(255,193,7,0.2);
+            background: rgba(255,193,7,0.08);
+            transition: all 0.2s; margin-bottom: 10px;
+        }
+        .screen-back:hover { background: rgba(255,193,7,0.2); color: #ffc107; }
+        .rules-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,193,7,0.12);
+            border-radius: 8px; padding: 12px 16px; margin: 10px 0 5px;
+            max-width: 380px; width: 100%;
+        }
+        .rules-box h3 { color: #ffc107; font-size: 13px; margin-bottom: 8px; }
+        .rules-box ul { list-style: none; padding: 0; }
+        .rules-box li { color: #6a5a30; font-size: 11px; line-height: 1.8; padding-left: 14px; position: relative; }
+        .rules-box li::before { content: '›'; position: absolute; left: 0; color: #ffc107; }
+    </style>
+</head>
+<body>
+<div id="gameContainer">
+    <canvas id="gameCanvas" width="480" height="720"></canvas>
+
+    <div id="selectScreen">
+        <a href="index.html" class="screen-back">&larr; 返回大厅</a>
+        <h1>黄金矿工</h1>
+        <div class="subtitle">GOLD MINER</div>
+        <canvas id="messiPreview" class="messi-preview" width="120" height="160"></canvas>
+        <div style="color:#c8a000;font-size:14px;margin-bottom:10px;">球王梅西 挑战挖矿传奇!</div>
+        <div class="rules-box">
+            <h3>游戏玩法</h3>
+            <ul>
+                <li>按下空格键或点击屏幕放出钩子，抓取地下的宝物</li>
+                <li>金块越大越值钱但也越重，拉回速度更慢</li>
+                <li>钻石价值最高（$800+），石头只值几十块</li>
+                <li>神秘袋子可能开出大奖，也可能开出烂货</li>
+                <li>TNT 炸药桶会炸掉周围物品，抓到直接引爆</li>
+                <li>每关有目标金额，在时间内达标才能过关</li>
+                <li>过关后可在商店购买炸药、力量药水和幸运草</li>
+                <li>D 键使用炸药炸掉钩子上的物品</li>
+            </ul>
+        </div>
+        <button id="startBtn">开 始 挖 矿</button>
+        <div class="controls-hint">空格键/点击 放钩子 | D键 使用炸药 | P 暂停</div>
+    </div>
+
+    <div id="shopScreen">
+        <h2>商 店</h2>
+        <div class="shop-money" id="shopMoney">金币: $0</div>
+        <div class="shop-items">
+            <div class="shop-item" onclick="buyItem('dynamite')"><div class="item-icon">&#128163;</div><div class="item-info"><div class="item-name">炸药</div><div class="item-desc">炸掉钩子上的石头或小物品</div></div><div class="item-price">$100</div></div>
+            <div class="shop-item" onclick="buyItem('strength')"><div class="item-icon">&#9889;</div><div class="item-info"><div class="item-name">力量药水</div><div class="item-desc">本关拉回速度提升50%</div></div><div class="item-price">$150</div></div>
+            <div class="shop-item" onclick="buyItem('lucky')"><div class="item-icon">&#127808;</div><div class="item-info"><div class="item-name">幸运草</div><div class="item-desc">本关出现更多高价值物品</div></div><div class="item-price">$200</div></div>
+        </div>
+        <button id="nextLevelBtn" onclick="startLevel()">下一关</button>
+    </div>
+
+    <div id="levelComplete">
+        <h2>关卡通过!</h2>
+        <div class="info" id="levelInfo"></div>
+        <button class="shop-btn" onclick="openShop()">前往商店</button>
+    </div>
+
+    <div id="gameOverScreen">
+        <h2>任 务 失 败</h2>
+        <div class="info" id="finalInfo"></div>
+        <button id="restartBtn" onclick="restartGame()">重新开始</button>
+        <button id="menuBtn2" onclick="backToMenu()">返回菜单</button>
+    </div>
+</div>
+
+<script>
+    var canvas = document.getElementById('gameCanvas');
+    var ctx = canvas.getContext('2d');
+
+    // 游戏状态
+    var gameState = 'menu'; // menu, playing, paused, shop, levelComplete, over
+    var level = 1, target = 0, money = 0, totalMoney = 0, timeLeft = 0, timer = 0;
+    var hook, items, particles;
+    var hasDynamite = 0, hasStrength = false, hasLucky = false;
+    var shakeDur = 0, shakeX = 0, shakeY = 0;
+
+    // 钩子状态
+    var HOOK_SWING = 0, HOOK_EXTEND = 1, HOOK_RETRACT = 2;
+    var hookState, hookAngle, hookX, hookY, hookSpeed, hookLen, maxLen;
+    var caughtItem = null;
+    var swingDir = 1;
+
+    function initGame() {
+        level = 1; money = 0; totalMoney = 0;
+        hasDynamite = 0; hasStrength = false; hasLucky = false;
+        startLevel();
+    }
+
+    function startLevel() {
+        document.getElementById('shopScreen').style.display = 'none';
+        document.getElementById('levelComplete').style.display = 'none';
+
+        target = 500 + (level - 1) * 400;
+        timeLeft = 60;
+        timer = 0;
+        hasStrength = false; hasLucky = false;
+
+        hookState = HOOK_SWING;
+        hookAngle = 0;
+        hookX = 240; hookY = 50;
+        hookLen = 0; maxLen = 650;
+        hookSpeed = 4;
+        caughtItem = null;
+        swingDir = 1;
+        particles = [];
+
+        generateItems();
+        gameState = 'playing';
+    }
+
+    function generateItems() {
+        items = [];
+        var luckyMult = hasLucky ? 1.5 : 1;
+
+        // 金块
+        var goldCount = 3 + Math.floor(level * 0.5);
+        for (var i = 0; i < goldCount; i++) {
+            var size = 15 + Math.random() * 25;
+            items.push({
+                type: 'gold',
+                x: 30 + Math.random() * 420,
+                y: 150 + Math.random() * 500,
+                size: size,
+                value: Math.floor(size * (15 + level * 2) * luckyMult),
+                weight: size * 0.8,
+            });
+        }
+
+        // 钻石
+        if (level >= 2) {
+            var diaCount = 1 + Math.floor(level / 3);
+            for (var i = 0; i < diaCount; i++) {
+                items.push({
+                    type: 'diamond',
+                    x: 40 + Math.random() * 400,
+                    y: 200 + Math.random() * 450,
+                    size: 14,
+                    value: Math.floor((800 + level * 100) * luckyMult),
+                    weight: 0.5,
+                });
+            }
+        }
+
+        // 石头
+        var rockCount = 2 + level;
+        for (var i = 0; i < rockCount; i++) {
+            var size = 18 + Math.random() * 22;
+            items.push({
+                type: 'rock',
+                x: 30 + Math.random() * 420,
+                y: 120 + Math.random() * 530,
+                size: size,
+                value: Math.floor(10 + Math.random() * 20),
+                weight: size * 1.5,
+            });
+        }
+
+        // 神秘袋子
+        var bagCount = 1 + Math.floor(level / 2);
+        for (var i = 0; i < bagCount; i++) {
+            items.push({
+                type: 'bag',
+                x: 40 + Math.random() * 400,
+                y: 180 + Math.random() * 460,
+                size: 16,
+                value: Math.floor((Math.random() < 0.3 ? 500 + level * 100 : -50 + Math.random() * 200) * luckyMult),
+                weight: 1,
+            });
+        }
+
+        // TNT
+        items.push({
+            type: 'tnt',
+            x: 60 + Math.random() * 360,
+            y: 300 + Math.random() * 300,
+            size: 20,
+            value: 0,
+            weight: 2,
+        });
+    }
+
+    function dropHook() {
+        if (hookState !== HOOK_SWING) return;
+        hookState = HOOK_EXTEND;
+        hookLen = 0;
+    }
+
+    function useDynamite() {
+        if (hasDynamite > 0 && caughtItem) {
+            hasDynamite--;
+            spawnParticles(caughtItem.x, caughtItem.y, '#ff8800', 20);
+            caughtItem = null;
+            hookState = HOOK_SWING;
+            hookLen = 0;
+            shakeDur = 10;
+        }
+    }
+
+    function spawnParticles(x, y, color, count) {
+        for (var i = 0; i < count; i++) {
+            particles.push({
+                x: x, y: y,
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6,
+                life: 20 + Math.random() * 20,
+                maxLife: 40,
+                color: color,
+                size: 2 + Math.random() * 4,
+            });
+        }
+    }
+
+    function update() {
+        if (gameState !== 'playing') return;
+
+        timer++;
+        if (timer % 60 === 0) timeLeft--;
+        if (timeLeft <= 0) {
+            if (money >= target) openShop();
+            else { gameState = 'over'; document.getElementById('finalInfo').textContent = '到达关卡: ' + level + ' | 总收入: $' + totalMoney; document.getElementById('gameOverScreen').style.display = 'flex'; }
+            return;
+        }
+
+        // 摆动
+        if (hookState === HOOK_SWING) {
+            hookAngle += 0.025 * swingDir;
+            if (hookAngle > 0.9) swingDir = -1;
+            if (hookAngle < -0.9) swingDir = 1;
+            hookX = 240 + Math.sin(hookAngle) * 160;
+            hookY = 50 + Math.cos(hookAngle) * 20;
+        }
+
+        // 伸出
+        if (hookState === HOOK_EXTEND) {
+            hookLen += 5;
+            var endX = hookX + Math.sin(hookAngle) * hookLen;
+            var endY = hookY + Math.cos(hookAngle) * hookLen;
+
+            // 碰壁收回
+            if (endX < 10 || endX > 470 || endY > 710) {
+                hookState = HOOK_RETRACT;
+            }
+
+            // 碰到物品
+            for (var i = 0; i < items.length; i++) {
+                var it = items[i];
+                var dist = Math.hypot(endX - it.x, endY - it.y);
+                if (dist < it.size + 8) {
+                    caughtItem = it;
+                    items.splice(i, 1);
+                    hookState = HOOK_RETRACT;
+                    if (it.type === 'tnt') {
+                        // TNT 炸掉周围物品
+                        spawnParticles(it.x, it.y, '#ff4400', 30);
+                        shakeDur = 15;
+                        items = items.filter(function(o) {
+                            if (Math.hypot(o.x - it.x, o.y - it.y) < 80) {
+                                spawnParticles(o.x, o.y, '#ffaa00', 5);
+                                return false;
+                            }
+                            return true;
+                        });
+                        caughtItem = null;
+                    }
+                    break;
+                }
+            }
+        }
+
+        // 收回
+        if (hookState === HOOK_RETRACT) {
+            var spd = hasStrength ? hookSpeed * 1.5 : hookSpeed;
+            if (caughtItem) spd = Math.max(1.5, spd - caughtItem.weight * 0.2);
+            hookLen -= spd;
+            if (hookLen <= 0) {
+                hookLen = 0;
+                if (caughtItem) {
+                    var val = caughtItem.value;
+                    money += val;
+                    totalMoney += val;
+                    spawnParticles(hookX, hookY, val > 0 ? '#ffd600' : '#ff4444', 10);
+                    caughtItem = null;
+                }
+                hookState = HOOK_SWING;
+            }
+        }
+
+        // 粒子
+        particles = particles.filter(function(p) {
+            p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life--;
+            return p.life > 0;
+        });
+
+        if (shakeDur > 0) {
+            shakeX = (Math.random() - 0.5) * shakeDur;
+            shakeY = (Math.random() - 0.5) * shakeDur;
+            shakeDur--;
+        } else { shakeX = 0; shakeY = 0; }
+    }
+
+    // ===== 绘制梅西 =====
+    function drawMessi(c, cx, cy, scale) {
+        var s = scale || 1;
+        c.save(); c.translate(cx, cy); c.scale(s, s);
+
+        // 身体 - 阿根廷蓝白条纹球衣
+        c.fillStyle = '#f5f5f5';
+        c.fillRect(-10, 10, 20, 22);
+        // 蓝色条纹
+        c.fillStyle = '#2196f3';
+        for (var i = 0; i < 3; i++) c.fillRect(-10 + i * 10, 10, 4, 22);
+        // 号码10
+        c.fillStyle = '#1a1a1a'; c.font = 'bold 10px sans-serif'; c.textAlign = 'center';
+        c.fillText('10', 0, 26);
+
+        // 头
+        c.fillStyle = '#ffcc80';
+        c.beginPath(); c.arc(0, 4, 11, 0, Math.PI * 2); c.fill();
+
+        // 头发 - 梅西经典蓬松短发
+        c.fillStyle = '#4a3728';
+        c.beginPath(); c.ellipse(0, -4, 13, 7, 0, Math.PI, 0); c.fill();
+        c.fillRect(-12, -2, 5, 10); c.fillRect(7, -2, 5, 10);
+        c.fillRect(-10, -6, 3, 6); c.fillRect(7, -6, 3, 6);
+
+        // 眉毛
+        c.fillStyle = '#3a2718'; c.fillRect(-5, -1, 4, 1); c.fillRect(2, -1, 4, 1);
+
+        // 眼睛
+        c.fillStyle = '#333';
+        c.fillRect(-4, 1, 3, 3); c.fillRect(2, 1, 3, 3);
+        // 瞳孔高光
+        c.fillStyle = '#fff';
+        c.fillRect(-3, 1, 1, 1); c.fillRect(3, 1, 1, 1);
+
+        // 胡子（梅西的标志性胡须）
+        c.fillStyle = '#4a3728';
+        c.beginPath();
+        c.moveTo(-5, 7); c.quadraticCurveTo(0, 12, 5, 7);
+        c.quadraticCurveTo(0, 10, -5, 7); c.fill();
+
+        // 嘴巴微笑
+        c.strokeStyle = '#333'; c.lineWidth = 1;
+        c.beginPath(); c.arc(0, 7, 4, 0.2, Math.PI - 0.2); c.stroke();
+
+        // 手臂（伸向钩子方向）
+        c.fillStyle = '#ffcc80';
+        c.save();
+        c.translate(12, 14);
+        c.rotate(-0.8 + Math.sin(Date.now() * 0.003) * 0.2);
+        c.fillRect(0, -2, 16, 5);
+        // 手
+        c.beginPath(); c.arc(16, 0.5, 4, 0, Math.PI * 2); c.fill();
+        c.restore();
+
+        // 左手臂
+        c.fillStyle = '#ffcc80';
+        c.fillRect(-16, 14, 10, 5);
+
+        // 短裤
+        c.fillStyle = '#f5f5f5'; c.fillRect(-9, 32, 18, 10);
+        // 蓝色条纹
+        c.fillStyle = '#2196f3'; c.fillRect(-9, 32, 3, 10); c.fillRect(6, 32, 3, 10);
+
+        // 腿
+        c.fillStyle = '#ffcc80'; c.fillRect(-7, 42, 5, 12); c.fillRect(2, 42, 5, 12);
+
+        // 袜子（蓝色）
+        c.fillStyle = '#1565c0'; c.fillRect(-8, 52, 6, 6); c.fillRect(1, 52, 6, 6);
+
+        // 鞋（红色）
+        c.fillStyle = '#e53935'; c.fillRect(-9, 57, 7, 4); c.fillRect(0, 57, 7, 4);
+
+        c.restore();
+    }
+
+    function drawItem(c, it) {
+        c.save(); c.translate(it.x, it.y);
+
+        if (it.type === 'gold') {
+            // 金块
+            var g = c.createLinearGradient(-it.size/2, -it.size/2, it.size/2, it.size/2);
+            g.addColorStop(0, '#ffd600'); g.addColorStop(0.5, '#ffab00'); g.addColorStop(1, '#ff8f00');
+            c.fillStyle = g; c.shadowColor = '#ffc107'; c.shadowBlur = 8;
+            c.fillRect(-it.size/2, -it.size/2, it.size, it.size);
+            c.shadowBlur = 0;
+            c.strokeStyle = '#e6a800'; c.lineWidth = 1.5;
+            c.strokeRect(-it.size/2, -it.size/2, it.size, it.size);
+            // 高光
+            c.fillStyle = 'rgba(255,255,255,0.2)';
+            c.fillRect(-it.size/2 + 2, -it.size/2 + 2, it.size/3, it.size/3);
+        }
+        else if (it.type === 'diamond') {
+            c.fillStyle = '#4fc3f7'; c.shadowColor = '#4fc3f7'; c.shadowBlur = 12;
+            c.beginPath();
+            c.moveTo(0, -it.size); c.lineTo(-it.size*0.7, 0); c.lineTo(0, it.size*0.6); c.lineTo(it.size*0.7, 0); c.closePath();
+            c.fill(); c.shadowBlur = 0;
+            c.strokeStyle = '#81d4fa'; c.lineWidth = 1; c.stroke();
+            // 切面
+            c.fillStyle = 'rgba(255,255,255,0.3)';
+            c.beginPath(); c.moveTo(-2, -it.size+3); c.lineTo(-it.size*0.4, 0); c.lineTo(2, 0); c.closePath(); c.fill();
+        }
+        else if (it.type === 'rock') {
+            c.fillStyle = '#666'; c.shadowColor = '#444'; c.shadowBlur = 3;
+            c.beginPath();
+            c.moveTo(-it.size*0.5, it.size*0.3);
+            c.lineTo(-it.size*0.4, -it.size*0.4);
+            c.lineTo(0, -it.size*0.5);
+            c.lineTo(it.size*0.4, -it.size*0.3);
+            c.lineTo(it.size*0.5, it.size*0.2);
+            c.lineTo(it.size*0.2, it.size*0.4);
+            c.closePath();
+            c.fill(); c.shadowBlur = 0;
+            c.strokeStyle = '#555'; c.lineWidth = 1; c.stroke();
+        }
+        else if (it.type === 'bag') {
+            c.fillStyle = '#8d6e63'; c.shadowColor = '#5d4037'; c.shadowBlur = 5;
+            c.beginPath();
+            c.moveTo(-it.size*0.6, it.size*0.4);
+            c.quadraticCurveTo(-it.size*0.7, -it.size*0.3, -it.size*0.2, -it.size*0.6);
+            c.lineTo(it.size*0.2, -it.size*0.6);
+            c.quadraticCurveTo(it.size*0.7, -it.size*0.3, it.size*0.6, it.size*0.4);
+            c.closePath();
+            c.fill(); c.shadowBlur = 0;
+            c.fillStyle = '#6d4c41';
+            c.fillRect(-it.size*0.15, -it.size*0.7, it.size*0.3, it.size*0.2);
+            // ? 标记
+            c.fillStyle = '#ffc107'; c.font = 'bold 12px sans-serif'; c.textAlign = 'center';
+            c.fillText('?', 0, 5);
+        }
+        else if (it.type === 'tnt') {
+            c.fillStyle = '#e53935'; c.shadowColor = '#ff1744'; c.shadowBlur = 6;
+            c.fillRect(-it.size/2, -it.size/2, it.size, it.size);
+            c.shadowBlur = 0;
+            c.fillStyle = '#fff'; c.font = 'bold 10px sans-serif'; c.textAlign = 'center';
+            c.fillText('TNT', 0, 4);
+            // 导火线
+            c.strokeStyle = '#8d6e63'; c.lineWidth = 2;
+            c.beginPath(); c.moveTo(0, -it.size/2); c.quadraticCurveTo(5, -it.size/2 - 8, -3, -it.size/2 - 12); c.stroke();
+            // 火花
+            c.fillStyle = '#ff9800';
+            c.beginPath(); c.arc(-3 + Math.random()*2, -it.size/2 - 12, 2 + Math.random()*2, 0, Math.PI*2); c.fill();
+        }
+
+        c.restore();
+    }
+
+    function draw() {
+        ctx.save();
+        ctx.translate(shakeX, shakeY);
+
+        // 背景 - 洞穴
+        var bg = ctx.createLinearGradient(0, 0, 0, 720);
+        bg.addColorStop(0, '#3a2a10'); bg.addColorStop(0.1, '#2a1a08'); bg.addColorStop(1, '#1a1005');
+        ctx.fillStyle = bg; ctx.fillRect(0, 0, 480, 720);
+
+        // 土壤纹理
+        for (var i = 0; i < 80; i++) {
+            ctx.fillStyle = 'rgba(100,70,30,' + (0.05 + (i * 7 % 10) * 0.01) + ')';
+            ctx.fillRect((i * 53) % 480, 80 + (i * 37) % 640, 6 + (i % 5) * 4, 2);
+        }
+
+        // 石块背景装饰
+        ctx.fillStyle = 'rgba(60,40,20,0.3)';
+        for (var i = 0; i < 8; i++) {
+            ctx.beginPath();
+            ctx.arc(60 * i + 20, 600 + Math.sin(i) * 50, 15 + i * 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        if (gameState === 'playing' || gameState === 'paused') {
+            // 物品
+            items.forEach(function(it) { drawItem(ctx, it); });
+
+            // 钩子线
+            var endX = hookX + Math.sin(hookAngle) * hookLen;
+            var endY = hookY + Math.cos(hookAngle) * hookLen;
+
+            ctx.strokeStyle = '#888'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(240, 40); ctx.lineTo(hookX, hookY);
+            if (hookLen > 0) ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            // 钩子
+            var hx = hookLen > 0 ? endX : hookX;
+            var hy = hookLen > 0 ? endY : hookY;
+            ctx.fillStyle = '#666';
+            ctx.beginPath(); ctx.arc(hx, hy, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#888'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(hx, hy + 2, 5, 0.5, Math.PI - 0.5); ctx.stroke();
+
+            // 被抓住的物品
+            if (caughtItem) {
+                caughtItem.x = hx;
+                caughtItem.y = hy + caughtItem.size;
+                drawItem(ctx, caughtItem);
+            }
+
+            // 梅西
+            drawMessi(ctx, 225, 2, 0.7);
+
+            // 粒子
+            particles.forEach(function(p) {
+                ctx.globalAlpha = p.life / p.maxLife;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+            });
+            ctx.globalAlpha = 1;
+
+            // HUD
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillRect(0, 0, 480, 78);
+            // 返回大厅按钮
+            ctx.fillStyle = 'rgba(255,193,7,0.12)'; ctx.fillRect(388, 3, 85, 28);
+            ctx.strokeStyle = 'rgba(255,193,7,0.3)'; ctx.lineWidth = 1; ctx.strokeRect(388, 3, 85, 28);
+            ctx.fillStyle = '#ffc107'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('◀ 大厅', 430, 21); ctx.textAlign = 'left';
+
+            // 关卡
+            ctx.fillStyle = '#ffc107'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'left';
+            ctx.fillText('第 ' + level + ' 关', 15, 24);
+
+            // 金币
+            ctx.fillStyle = '#ffd600'; ctx.font = 'bold 18px sans-serif';
+            ctx.fillText('$' + money, 15, 50);
+            ctx.fillStyle = '#8a6a00'; ctx.font = '11px sans-serif';
+            ctx.fillText('目标: $' + target, 15, 68);
+
+            // 时间
+            ctx.textAlign = 'right';
+            ctx.fillStyle = timeLeft < 10 ? '#ff4444' : '#e0e0e0';
+            ctx.font = 'bold 22px sans-serif';
+            ctx.fillText(timeLeft + 's', 465, 24);
+            ctx.fillStyle = '#8a7a5a'; ctx.font = '11px sans-serif';
+            ctx.fillText('剩余时间', 465, 40);
+
+            // 道具栏
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#e0e0e0'; ctx.font = '12px sans-serif';
+            ctx.fillText('炸药: ' + hasDynamite + ' [D]', 340, 58);
+
+            // 进度条
+            var prog = Math.min(1, money / target);
+            ctx.fillStyle = '#1a1200'; ctx.fillRect(180, 62, 200, 8);
+            ctx.fillStyle = prog >= 1 ? '#4caf50' : '#ffc107';
+            ctx.fillRect(180, 62, 200 * prog, 8);
+            ctx.strokeStyle = '#3a2a10'; ctx.lineWidth = 1; ctx.strokeRect(180, 62, 200, 8);
+            ctx.fillStyle = '#8a7a5a'; ctx.font = '9px sans-serif';
+            ctx.fillText(Math.floor(prog * 100) + '%', 350, 70);
+        }
+
+        ctx.restore();
+    }
+
+    function openShop() {
+        gameState = 'shop';
+        document.getElementById('shopMoney').textContent = '金币: $' + money;
+        document.getElementById('shopScreen').style.display = 'flex';
+    }
+
+    function buyItem(item) {
+        if (item === 'dynamite' && money >= 100) { money -= 100; hasDynamite++; }
+        else if (item === 'strength' && money >= 150) { money -= 150; hasStrength = true; }
+        else if (item === 'lucky' && money >= 200) { money -= 200; hasLucky = true; }
+        document.getElementById('shopMoney').textContent = '金币: $' + money;
+    }
+
+    function levelComplete() {
+        gameState = 'levelComplete';
+        document.getElementById('levelInfo').textContent = '第 ' + level + ' 关完成! 收入: $' + money;
+        document.getElementById('levelComplete').style.display = 'flex';
+    }
+
+    function checkLevelComplete() {
+        if (money >= target && items.length <= 2) {
+            level++;
+            levelComplete();
+        }
+    }
+
+    function restartGame() {
+        document.getElementById('gameOverScreen').style.display = 'none';
+        initGame();
+    }
+
+    function backToMenu() {
+        document.getElementById('gameOverScreen').style.display = 'none';
+        document.getElementById('shopScreen').style.display = 'none';
+        document.getElementById('levelComplete').style.display = 'none';
+        document.getElementById('selectScreen').style.display = 'flex';
+        gameState = 'menu';
+    }
+
+    // 输入
+    document.addEventListener('keydown', function(e) {
+        if (e.code === 'Space') { e.preventDefault(); dropHook(); }
+        if (e.code === 'KeyD') useDynamite();
+        if (e.code === 'KeyP') {
+            if (gameState === 'playing') gameState = 'paused';
+            else if (gameState === 'paused') gameState = 'playing';
+        }
+    });
+
+    canvas.addEventListener('click', function(e) {
+        var rect = canvas.getBoundingClientRect();
+        var mx = (e.clientX - rect.left) * (480 / rect.width);
+        var my = (e.clientY - rect.top) * (720 / rect.height);
+        if (mx >= 388 && mx <= 473 && my >= 3 && my <= 31 && gameState === 'playing') {
+            window.location.href = 'index.html'; return;
+        }
+        dropHook();
+    });
+    canvas.addEventListener('touchstart', function(e) { e.preventDefault(); dropHook(); });
+
+    document.getElementById('startBtn').onclick = function() {
+        document.getElementById('selectScreen').style.display = 'none';
+        initGame();
+    };
+
+    // 预览梅西
+    (function() {
+        var pc = document.getElementById('messiPreview');
+        var px = pc.getContext('2d');
+        drawMessi(px, 60, 30, 1.1);
+    })();
+
+    function gameLoop() {
+        update();
+        draw();
+        // 检查关卡完成
+        if (gameState === 'playing' && timeLeft > 0 && money >= target && items.length === 0) {
+            levelComplete();
+        }
+        requestAnimationFrame(gameLoop);
+    }
+    gameLoop();
+</script>
+</body>
+</html>
