@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/x-icon" href="favicon.ico"> <!-- 网站图标 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 地球仪 - 星空完整版</title>
+    <style>
+        /* 基础样式 */
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #000; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; }
+        #globeViz { width: 100vw; height: 100vh; }
+
+        /* --- 1. 地球上的文字标签样式 --- */
+        .globe-label {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            pointer-events: none; /* 允许鼠标穿透点击地球 */
+            white-space: nowrap;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+            user-select: none;
+        }
+
+        /* 首都样式 */
+        .label-capital {
+            color: #ffeb3b; /* 亮黄 */
+            font-size: 13px; font-weight: bold;
+            display: flex; align-items: center; z-index: 100;
+        }
+        .dot {
+            width: 8px; height: 8px; background: #ff0000;
+            border: 1px solid #fff; border-radius: 50%;
+            margin-right: 5px; box-shadow: 0 0 5px #ff0000;
+        }
+
+        /* 国家名字样式 */
+        .label-country {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 14px; letter-spacing: 1px; z-index: 50;
+        }
+
+        /* 海洋名字样式 */
+        .label-ocean {
+            color: rgba(64, 156, 255, 0.45);
+            font-size: 24px; font-weight: bold;
+            font-style: italic; letter-spacing: 4px; z-index: 10;
+        }
+
+        /* --- 2. 免责声明样式 --- */
+        .disclaimer-box {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(20, 20, 20, 0.75); /* 深色背景 */
+            border: 1px solid rgba(255, 80, 80, 0.3); /* 淡红色边框提醒 */
+            color: #ccc;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.6;
+            max-width: 300px;
+            backdrop-filter: blur(5px);
+            z-index: 999;
+            pointer-events: none;
+            text-align: justify;
+        }
+        .disclaimer-title {
+            color: #ff5555; font-weight: bold; margin-bottom: 5px; font-size: 13px;
+        }
+
+        /* 加载提示 */
+        #loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: white; font-size: 16px; pointer-events: none;
+        }
+    </style>
+
+    <!-- 引入核心库 -->
+    <script src="//unpkg.com/d3"></script>
+    <script src="//unpkg.com/three"></script>
+    <script src="//unpkg.com/globe.gl"></script>
+    <script src="//unpkg.com/topojson-client"></script>
+</head>
+<body>
+
+<div id="loading">正在加载星空与地理数据...</div>
+<div id="globeViz"></div>
+
+<!-- 免责声明区域 -->
+<div class="disclaimer-box">
+    <div class="disclaimer-title">⚠️ 免责声明 (Disclaimer)</div>
+    本数据可视化项目仅供前端技术演示与学习使用。
+    <br><br>
+    1. 地图底图数据来源于国外开源项目，其国界线绘制及地名标注可能不符合中国官方标准地图要求。
+    <br>
+    2. 代码中已对部分敏感标签进行技术过滤（如台湾、藏南等），但几何边界无法完全修正。
+    <br>
+    3. <strong>本图不作为任何政治、领土主权或地理测绘的依据。</strong>正式场合请参考自然资源部标准地图。
+</div>
+
+<script>
+    // =========================================
+    // 1. 数据配置
+    // =========================================
+
+    const OCEANS = [
+        { name: "太平洋", lat: 0, lng: -160, type: 'ocean' },
+        { name: "大西洋", lat: 20, lng: -35, type: 'ocean' },
+        { name: "印度洋", lat: -10, lng: 75, type: 'ocean' },
+        { name: "北冰洋", lat: 85, lng: 0, type: 'ocean' },
+        { name: "南大洋", lat: -60, lng: 0, type: 'ocean' },
+        { name: "南海", lat: 15, lng: 114, type: 'ocean' }
+    ];
+
+    // 首都数据
+    const CAPITALS = [
+        { name: "北京", lat: 39.9042, lng: 116.4074, type: 'capital' },
+        { name: "莫斯科", lat: 55.7558, lng: 37.6173, type: 'capital' },
+        { name: "华盛顿", lat: 38.9072, lng: -77.0369, type: 'capital' },
+        { name: "伦敦", lat: 51.5074, lng: -0.1278, type: 'capital' },
+        { name: "巴黎", lat: 48.8566, lng: 2.3522, type: 'capital' },
+        { name: "东京", lat: 35.6762, lng: 139.6503, type: 'capital' },
+        { name: "柏林", lat: 52.5200, lng: 13.4050, type: 'capital' },
+        { name: "堪培拉", lat: -35.2809, lng: 149.1300, type: 'capital' },
+        { name: "巴西利亚", lat: -15.8267, lng: -47.9218, type: 'capital' },
+        { name: "开罗", lat: 30.0444, lng: 31.2357, type: 'capital' }
+    ];
+
+    // 国家名称白名单
+    const COUNTRY_MAP = {
+        "China": "中国",
+        "United States of America": "美国",
+        "Russia": "俄罗斯",
+        "Brazil": "巴西",
+        "Australia": "澳大利亚",
+        "Canada": "加拿大",
+        "India": "印度",
+        "Japan": "日本",
+        "South Korea": "韩国",
+        "United Kingdom": "英国",
+        "France": "法国",
+        "Germany": "德国",
+        "Italy": "意大利",
+        "Spain": "西班牙",
+        "Egypt": "埃及",
+        "South Africa": "南非",
+        "Indonesia": "印度尼西亚",
+        "Mexico": "墨西哥",
+        "Argentina": "阿根廷",
+        "Saudi Arabia": "沙特",
+        "Turkey": "土耳其",
+        "Iran": "伊朗",
+        "Mongolia": "蒙古",
+        "Kazakhstan": "哈萨克斯坦"
+    };
+
+    // =========================================
+    // 2. 初始化地球 (已补回星空背景)
+    // =========================================
+    const world = Globe()
+    (document.getElementById('globeViz'))
+        .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+        .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
+        // ✨ 这里把星空加回来了 ✨
+        .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+        .showAtmosphere(true)
+        .atmosphereColor('lightskyblue')
+        .atmosphereAltitude(0.15);
+
+    // 灯光
+    setTimeout(() => {
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(15, 15, 15);
+        world.scene().add(dirLight);
+        world.scene().add(new THREE.AmbientLight(0x666666));
+    });
+
+    // =========================================
+    // 3. 数据处理
+    // =========================================
+    fetch('//unpkg.com/world-atlas/countries-110m.json')
+        .then(res => res.json())
+        .then(worldData => {
+            const rawFeatures = topojson.feature(worldData, worldData.objects.countries).features;
+            const countryLabels = [];
+
+            rawFeatures.forEach(feature => {
+                const nameEn = feature.properties.name;
+
+                // --- 过滤逻辑 ---
+                if (nameEn === "Taiwan") return; // 政治正确过滤
+
+                const nameCn = COUNTRY_MAP[nameEn];
+                if (nameCn) {
+                    const centroid = d3.geoCentroid(feature);
+                    countryLabels.push({
+                        name: nameCn, lat: centroid[1], lng: centroid[0], type: 'country'
+                    });
+                }
+            });
+
+            // 合并数据
+            const allHtmlElements = [...OCEANS, ...CAPITALS, ...countryLabels];
+
+            // 渲染 HTML 标签
+            world
+                .htmlElementsData(allHtmlElements)
+                .htmlLat(d => d.lat)
+                .htmlLng(d => d.lng)
+                .htmlElement(d => {
+                    const el = document.createElement('div');
+                    el.className = 'globe-label';
+
+                    if (d.type === 'capital') {
+                        el.classList.add('label-capital');
+                        el.innerHTML = `<div class="dot"></div>${d.name}`;
+                    } else if (d.type === 'country') {
+                        el.classList.add('label-country');
+                        el.innerText = d.name;
+                    } else if (d.type === 'ocean') {
+                        el.classList.add('label-ocean');
+                        el.innerText = d.name;
+                    }
+                    return el;
+                });
+
+            // 绘制背景边界
+            world.polygonsData(rawFeatures)
+                .polygonCapColor(() => 'rgba(0,0,0,0)')
+                .polygonSideColor(() => 'rgba(0,0,0,0)')
+                .polygonStrokeColor(() => 'rgba(255,255,255,0.08)');
+
+            // 移除 loading
+            document.getElementById('loading').style.display = 'none';
+
+            // 自动旋转
+            world.controls().autoRotate = true;
+            world.controls().autoRotateSpeed = 0.5;
+        });
+
+</script>
+</body>
+
+</html>

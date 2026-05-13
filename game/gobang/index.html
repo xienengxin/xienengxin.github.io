@@ -1,0 +1,1908 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>五子棋 · 引擎版</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #2c3e4f;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", "Helvetica Neue", sans-serif;
+            padding: 20px;
+        }
+
+        .game-layout {
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            gap: 28px;
+            width: 100%;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .control-panel {
+            width: 280px;
+            background: rgba(35, 35, 45, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 48px;
+            padding: 30px 20px;
+            color: #f0e9e0;
+            box-shadow:
+                    0 20px 30px -8px rgba(0, 0, 0, 0.7),
+                    0 0 0 1px rgba(255, 215, 140, 0.2) inset;
+            border: 1px solid rgba(255, 215, 150, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: 90vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #c09a6b #3a2a2a;
+        }
+
+        .control-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .control-panel::-webkit-scrollbar-thumb {
+            background: #c09a6b;
+            border-radius: 20px;
+        }
+
+        .board-wrapper {
+            background: transparent;
+            padding: 0;
+            border-radius: 36px;
+            box-shadow: 0 25px 40px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+        }
+
+        canvas#boardCanvas {
+            display: block;
+            width: min(85vh, 85vw);
+            height: min(85vh, 85vw);
+            background: #ebc28e;
+            border-radius: 32px;
+            cursor: pointer;
+            box-shadow:
+                    inset 0 0 0 2px #b87c3a,
+                    0 15px 25px rgba(0, 0, 0, 0.4);
+            transition: background-color 0.3s ease;
+        }
+
+        canvas#boardCanvas.victory-gray {
+            background: #b0b0b0 !important;
+        }
+
+        .panel-title {
+            font-size: 34px;
+            font-weight: 700;
+            text-align: center;
+            background: linear-gradient(135deg, #fde6b6, #dba870);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 4px;
+            text-shadow: 0 2px 5px #00000050;
+        }
+
+        .group-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #eddabc;
+            margin: 4px 0 2px 6px;
+            letter-spacing: 1px;
+            border-left: 6px solid #e6b567;
+            padding-left: 10px;
+            text-transform: uppercase;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 4px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: #2f2f3a;
+            border: 2px solid #7e6b5a;
+            color: #f2e3cf;
+            font-size: 18px;
+            font-weight: 600;
+            padding: 14px 8px;
+            border-radius: 60px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-shadow:
+                    0 6px 0 #1a1a22,
+                    0 4px 12px black;
+            flex: 1 1 0px;
+            min-width: 100px;
+            backdrop-filter: blur(4px);
+            letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn.small {
+            font-size: 15px;
+            padding: 10px 4px;
+            min-width: 70px;
+        }
+
+        .btn.active {
+            background: #3c6e8f;
+            border-color: #ffcf9a;
+            box-shadow:
+                    0 6px 0 #1d404b,
+                    0 4px 12px black;
+            color: white;
+        }
+
+        .btn:hover {
+            background: #4a4a5a;
+            border-color: #dbb27c;
+            transform: translateY(-2px);
+            box-shadow:
+                    0 8px 0 #1a1a22,
+                    0 8px 16px black;
+        }
+
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #1a1a22;
+        }
+
+        .btn-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid #dbb27c;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #f2e3cf;
+            margin-right: 4px;
+        }
+
+        .btn.small .btn-icon {
+            width: 18px;
+            height: 18px;
+            font-size: 12px;
+            margin-right: 2px;
+        }
+
+        .status-area {
+            font-size: 26px;
+            font-weight: 700;
+            text-align: center;
+            background: #2b2b38cc;
+            border-radius: 60px;
+            padding: 16px 8px;
+            margin: 6px 0;
+            border: 2px solid #c9a468;
+            box-shadow:
+                    inset 0 2px 6px #00000060,
+                    0 6px 0 #18181e;
+            color: #fff2d4;
+            backdrop-filter: blur(4px);
+        }
+
+        .review-indicator {
+            background: #b06e30;
+            color: #ffefc0;
+            font-weight: bold;
+            text-align: center;
+            padding: 18px 8px;
+            border-radius: 60px;
+            font-size: 24px;
+            border: 2px solid #ffcf8a;
+            box-shadow: 0 6px 0 #5f3e1f;
+        }
+
+        .victory-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #433b32, #2a2620);
+            border-radius: 40px;
+            padding: 60px 40px;
+            text-align: center;
+            border: 4px solid #e6b567;
+            box-shadow: 0 0 50px rgba(255, 207, 154, 0.6);
+            min-width: 400px;
+            max-width: 600px;
+        }
+
+        .modal-title {
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .win-text {
+            background: linear-gradient(135deg, #ffdf88, #ffb74d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .lose-text {
+            background: linear-gradient(135deg, #ff8a80, #ef5350);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .modal-subtitle {
+            font-size: 28px;
+            color: #f2e3cf;
+            margin-bottom: 40px;
+        }
+
+        .modal-btn {
+            background: #2f2f3a;
+            border: 3px solid #e6b567;
+            color: #f2e3cf;
+            font-size: 22px;
+            font-weight: 700;
+            padding: 18px 40px;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow:
+                    0 8px 0 #1a1a22,
+                    0 6px 20px black;
+        }
+
+        .modal-btn-row {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .modal-btn:hover {
+            background: #4a4a5a;
+            border-color: #ffcf9a;
+            transform: translateY(-4px);
+            box-shadow:
+                    0 12px 0 #1a1a22,
+                    0 8px 25px black;
+        }
+
+        .modal-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 #1a1a22;
+        }
+
+        @media (max-width: 1200px) {
+            .game-layout {
+                flex-wrap: wrap;
+            }
+
+            .control-panel {
+                width: 320px;
+                max-height: none;
+            }
+
+            .modal-content {
+                min-width: 80%;
+                padding: 40px 20px;
+            }
+
+            .modal-title {
+                font-size: 36px;
+            }
+
+            .modal-subtitle {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="game-layout">
+    <div class="control-panel left-panel" id="leftPanel"></div>
+
+    <div class="board-wrapper">
+        <canvas id="boardCanvas" width="900" height="900"></canvas>
+    </div>
+
+    <div class="control-panel right-panel" id="rightPanel"></div>
+</div>
+
+<script>
+    (function () {
+        const BOARD_SIZE = 15;
+        const CELL_SIZE = 46;
+        const BOARD_LEFT = 128;
+        const BOARD_TOP = 128;
+        const PIECE_RADIUS = 20;
+
+        let BOARD_COLOR = [235, 194, 142];
+        let bodyBgColor = [44, 62, 79];
+        let victoryModalShown = false;
+
+        // 棋子状态常量
+        const EMPTY = 0;
+        const PLAYER_BLACK = 1;
+        const PLAYER_WHITE = 2;
+
+        // 游戏结果常量
+        const WINNER_NONE = 0;
+        const WINNER_BLACK = 1;
+        const WINNER_WHITE = 2;
+        const WINNER_DRAW = 3;
+
+        const DIRECTIONS = [
+            [1, 0], // 水平
+            [0, 1], // 垂直
+            [1, 1], // 主对角线 (\)
+            [1, -1], // 副对角线 (/)
+        ];
+
+        // 棋局核心状态和逻辑管理类
+        class Game {
+            constructor() {
+                // 游戏模式: 'pve' (人机), 'pvp' (人人), 'eve' (引擎对战)
+                this.mode = "pve";
+                // AI 难度设置
+                this.difficulty = "引擎中";
+                this.engine1Diff = "引擎中";
+                this.engine2Diff = "引擎中";
+
+                // 引擎对战控制状态
+                this.engineAutoPlay = false; // 是否自动连续落子
+                this.engineInterval = 1000; // 自动落子间隔(ms)
+                this.engineForceNext = false; // 是否强制走下一步
+
+                // 棋盘数据: EMPTY=空, PLAYER_BLACK=黑, PLAYER_WHITE=白
+                this.board = Array(BOARD_SIZE)
+                    .fill()
+                    .map(() => Array(BOARD_SIZE).fill(EMPTY));
+
+                // 当前回合: PLAYER_BLACK(黑) 或 PLAYER_WHITE(白)
+                this.turn = PLAYER_BLACK;
+                // 历史记录栈，用于悔棋和复盘: [row, col, player]
+                this.history = [];
+                // 胜者
+                this.winner = WINNER_NONE;
+
+                // 游戏进行状态
+                this.aiThinking = false;
+                this.aiAnalyzing = false;
+                this.aiHints = null;
+                this.showCoords = true;
+                this.player1Color = [0, 0, 0];
+                this.player2Color = [255, 255, 255];
+                this.lastMove = null;
+
+                // 复盘模式相关状态
+                this.reviewMode = false;
+                this.reviewStep = -1;
+                this.reviewHistory = [];
+                this.isUndoing = false;
+            }
+
+            // 重置游戏到初始状态
+            reset() {
+                this.board = Array(BOARD_SIZE)
+                    .fill()
+                    .map(() => Array(BOARD_SIZE).fill(EMPTY));
+                this.history = [];
+                this.lastMove = null;
+                this.turn = PLAYER_BLACK;
+                this.winner = WINNER_NONE;
+                this.reviewMode = false;
+                this.reviewStep = -1;
+                this.reviewHistory = [];
+                this.aiThinking = false;
+                this.aiAnalyzing = false;
+                this.aiHints = null;
+                this.isUndoing = false;
+                this.engineAutoPlay = false;
+                this.engineForceNext = false;
+                victoryModalShown = false;
+                if (typeof stopAIAnalysis === "function") stopAIAnalysis();
+            }
+
+            placePiece(row, col) {
+                if (this.isUndoing || row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE || this.board[row][col] !== EMPTY || this.winner !== WINNER_NONE || this.reviewMode) return false;
+                if (typeof stopAIAnalysis === "function") stopAIAnalysis();
+                this.board[row][col] = this.turn;
+                this.history.push([row, col, this.turn]);
+                this.lastMove = [row, col];
+                if (this.checkWin(row, col)) {
+                    this.winner = this.turn;
+                    setTimeout(showVictoryModal, 300);
+                } else if (this.checkDraw()) {
+                    this.winner = WINNER_DRAW;
+                    setTimeout(showVictoryModal, 300);
+                }
+                this.turn = this.turn === PLAYER_BLACK ? PLAYER_WHITE : PLAYER_BLACK;
+                return true;
+            }
+
+            checkDraw() {
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    for (let c = 0; c < BOARD_SIZE; c++) {
+                        if (this.board[r][c] === EMPTY) return false;
+                    }
+                }
+                return true;
+            }
+
+            undo() {
+                if (this.history.length === 0 || this.reviewMode || this.aiThinking) return false;
+                if (typeof stopAIAnalysis === "function") stopAIAnalysis();
+                this.isUndoing = true;
+                try {
+                    let undoCount = 0;
+                    if (this.mode === "pve") {
+                        if (this.history.length > 0) {
+                            let [row, col] = this.history.pop();
+                            this.board[row][col] = EMPTY;
+                            undoCount++;
+                        }
+                        if (this.history.length > 0) {
+                            let [row, col, player] = this.history.pop();
+                            this.board[row][col] = EMPTY;
+                            this.turn = player;
+                            undoCount++;
+                        }
+                    } else {
+                        let [row, col, player] = this.history.pop();
+                        this.board[row][col] = EMPTY;
+                        this.turn = player;
+                        undoCount++;
+                    }
+                    this.winner = WINNER_NONE;
+                    victoryModalShown = false;
+                    const modal = document.querySelector(".victory-modal");
+                    if (modal) modal.remove();
+                    this.lastMove = this.history.length > 0 ? this.history[this.history.length - 1] : null;
+                    return undoCount > 0;
+                } finally {
+                    setTimeout(() => {
+                        this.isUndoing = false;
+                    }, 200);
+                }
+            }
+
+            checkWin(row, col) {
+                const player = this.board[row][col];
+                for (let [dr, dc] of DIRECTIONS) {
+                    let count = 1;
+                    for (let i = 1; i < 5; i++) {
+                        let nr = row + dr * i,
+                            nc = col + dc * i;
+                        if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || this.board[nr][nc] !== player) break;
+                        count++;
+                    }
+                    for (let i = 1; i < 5; i++) {
+                        let nr = row - dr * i,
+                            nc = col - dc * i;
+                        if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || this.board[nr][nc] !== player) break;
+                        count++;
+                    }
+                    if (count >= 5) return true;
+                }
+                return false;
+            }
+
+            // ----- 其他系统功能 -----
+            validateColor(color, fallback) {
+                if (!Array.isArray(color) || color.length !== 3) return [...fallback];
+                const sanitized = color.map((value) => (Number.isInteger(value) && value >= 0 && value <= 255 ? value : null));
+                return sanitized.includes(null) ? [...fallback] : sanitized;
+            }
+
+            validateHistory(history) {
+                if (!Array.isArray(history) || history.length > BOARD_SIZE * BOARD_SIZE) return null;
+                const seen = new Set();
+                const sanitized = [];
+                let expectedPlayer = PLAYER_BLACK;
+                for (const step of history) {
+                    if (!Array.isArray(step) || step.length !== 3) return null;
+                    const [row, col, player] = step;
+                    if (!Number.isInteger(row) || !Number.isInteger(col) || !Number.isInteger(player)) return null;
+                    if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return null;
+                    if (player !== PLAYER_BLACK && player !== PLAYER_WHITE) return null;
+                    if (player !== expectedPlayer) return null;
+                    const key = `${row},${col}`;
+                    if (seen.has(key)) return null;
+                    seen.add(key);
+                    sanitized.push([row, col, player]);
+                    expectedPlayer = expectedPlayer === PLAYER_BLACK ? PLAYER_WHITE : PLAYER_BLACK;
+                }
+                return sanitized;
+            }
+
+            saveSgf() {
+                return JSON.stringify(
+                    { boardSize: BOARD_SIZE, player1Color: this.player1Color, player2Color: this.player2Color, history: this.history, mode: this.mode, difficulty: this.difficulty },
+                    null,
+                    2,
+                );
+            }
+
+            loadSgf(jsonStr) {
+                try {
+                    if (typeof jsonStr !== "string" || jsonStr.length === 0 || jsonStr.length > 1024 * 1024) return false;
+                    let data = JSON.parse(jsonStr);
+                    if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+                    if (data.boardSize !== BOARD_SIZE) return false;
+
+                    const safeHistory = this.validateHistory(data.history || []);
+                    if (!safeHistory) return false;
+
+                    const allowedModes = new Set(["pve", "pvp", "eve"]);
+                    const allowedDifficulties = new Set(["简单", "普通", "困难", "引擎初", "引擎中", "引擎高"]);
+                    const safeMode = allowedModes.has(data.mode) ? data.mode : "pve";
+                    const safeDifficulty = allowedDifficulties.has(data.difficulty) ? data.difficulty : "引擎中";
+
+                    this.reset();
+                    this.player1Color = this.validateColor(data.player1Color, [0, 0, 0]);
+                    this.player2Color = this.validateColor(data.player2Color, [255, 255, 255]);
+                    this.reviewHistory = safeHistory;
+                    this.mode = safeMode;
+                    this.difficulty = safeDifficulty;
+                    this.reviewMode = true;
+                    this.reviewStep = -1;
+                    this.board = Array(BOARD_SIZE)
+                        .fill()
+                        .map(() => Array(BOARD_SIZE).fill(EMPTY));
+                    this.turn = PLAYER_BLACK;
+                    this.winner = WINNER_NONE;
+                    victoryModalShown = false;
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            reviewForward() {
+                if (!this.reviewMode) return;
+                if (this.reviewStep + 1 < this.reviewHistory.length) {
+                    const nextStep = this.reviewHistory[this.reviewStep + 1];
+                    if (!Array.isArray(nextStep) || nextStep.length !== 3) return;
+                    let [row, col, player] = nextStep;
+                    if (!Number.isInteger(row) || !Number.isInteger(col) || !Number.isInteger(player)) return;
+                    if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return;
+                    if (this.board[row][col] !== EMPTY) return;
+                    this.reviewStep++;
+                    this.board[row][col] = player;
+                    this.lastMove = [row, col];
+                    this.turn = player === PLAYER_BLACK ? PLAYER_WHITE : PLAYER_BLACK;
+                    if (this.checkWin(row, col)) this.winner = player;
+                }
+            }
+
+            reviewBackward() {
+                if (!this.reviewMode || this.reviewStep < 0) return;
+                const currentStep = this.reviewHistory[this.reviewStep];
+                if (!Array.isArray(currentStep) || currentStep.length !== 3) return;
+                let [row, col] = currentStep;
+                if (!Number.isInteger(row) || !Number.isInteger(col)) return;
+                if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return;
+                this.board[row][col] = EMPTY;
+                this.reviewStep--;
+                if (this.reviewStep >= 0) {
+                    const prevStep = this.reviewHistory[this.reviewStep];
+                    if (!Array.isArray(prevStep) || prevStep.length !== 3) return;
+                    let [, , lastPlayer] = prevStep;
+                    this.turn = lastPlayer === PLAYER_BLACK ? PLAYER_WHITE : PLAYER_BLACK;
+                    this.lastMove = [prevStep[0], prevStep[1]];
+                    this.winner = WINNER_NONE;
+                } else {
+                    this.turn = PLAYER_BLACK;
+                    this.winner = WINNER_NONE;
+                    this.lastMove = null;
+                }
+                victoryModalShown = false;
+            }
+
+            exitReview() {
+                this.reviewMode = false;
+                this.reviewStep = -1;
+                this.reviewHistory = [];
+                this.reset();
+            }
+        }
+
+        const game = new Game();
+        const canvas = document.getElementById("boardCanvas");
+        const ctx = canvas.getContext("2d");
+
+        function showVictoryModal() {
+            if (victoryModalShown) return;
+            victoryModalShown = true;
+            const modal = document.createElement("div");
+            modal.className = "victory-modal";
+
+            let isPlayerWin = false;
+            let titleText = "";
+            let subText = "";
+
+            if (game.winner === WINNER_DRAW) {
+                titleText = "平局！";
+                subText = "棋盘已满，未分胜负 &#129309;";
+            } else if (game.mode === "pve") {
+                if (game.winner === PLAYER_BLACK) {
+                    isPlayerWin = true;
+                    titleText = "恭喜！";
+                    subText = "你赢了 太牛逼了 &#127881;";
+                } else {
+                    isPlayerWin = false;
+                    titleText = "很遗憾！";
+                    subText = "你输了 小瘪三 &#128557;";
+                }
+            } else {
+                if (game.winner === PLAYER_BLACK) {
+                    titleText = "黑棋胜利！";
+                    subText = "恭喜黑棋获胜 &#127881;";
+                } else {
+                    titleText = "白棋胜利！";
+                    subText = "恭喜白棋获胜 &#127881;";
+                }
+            }
+
+            modal.innerHTML = `<div class="modal-content"><div class="modal-title ${game.winner === WINNER_DRAW ? "" : isPlayerWin ? "win-text" : "lose-text"}" ${game.winner === WINNER_DRAW ? 'style="color: #f2e3cf;"' : ""}>${titleText}</div><div class="modal-subtitle">${subText}</div><div class="modal-btn-row"><button class="modal-btn" id="modalConfirmBtn">确定</button><button class="modal-btn" id="modalRestartBtn">再来一局</button></div></div>`;
+            document.body.appendChild(modal);
+            document.getElementById("modalConfirmBtn").addEventListener("click", () => {
+                modal.remove();
+            });
+            document.getElementById("modalRestartBtn").addEventListener("click", () => {
+                game.reset();
+                drawBoard();
+                renderPanels();
+                modal.remove();
+            });
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, 900, 900);
+            let boardBgColor = game.winner !== WINNER_NONE ? "#b0b0b0" : `rgb(${BOARD_COLOR[0]},${BOARD_COLOR[1]},${BOARD_COLOR[2]})`;
+            ctx.fillStyle = boardBgColor;
+            ctx.fillRect(0, 0, 900, 900);
+
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 2;
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                ctx.beginPath();
+                ctx.moveTo(BOARD_LEFT, BOARD_TOP + i * CELL_SIZE);
+                ctx.lineTo(BOARD_LEFT + (BOARD_SIZE - 1) * CELL_SIZE, BOARD_TOP + i * CELL_SIZE);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(BOARD_LEFT + i * CELL_SIZE, BOARD_TOP);
+                ctx.lineTo(BOARD_LEFT + i * CELL_SIZE, BOARD_TOP + (BOARD_SIZE - 1) * CELL_SIZE);
+                ctx.stroke();
+            }
+
+            const stars = [
+                [Math.floor(BOARD_SIZE / 2), Math.floor(BOARD_SIZE / 2)], // 天元
+                [3, 3],
+                [BOARD_SIZE - 4, 3],
+                [3, BOARD_SIZE - 4],
+                [BOARD_SIZE - 4, BOARD_SIZE - 4],
+            ];
+
+            ctx.fillStyle = "#000";
+            for (let [r, c] of stars) {
+                let x = BOARD_LEFT + c * CELL_SIZE,
+                    y = BOARD_TOP + r * CELL_SIZE;
+                ctx.beginPath();
+                ctx.arc(x, y, 6, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+
+            for (let r = 0; r < BOARD_SIZE; r++)
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (game.board[r][c] === EMPTY) continue;
+                    let x = BOARD_LEFT + c * CELL_SIZE,
+                        y = BOARD_TOP + r * CELL_SIZE;
+                    let color = game.board[r][c] === PLAYER_BLACK ? game.player1Color : game.player2Color;
+                    ctx.beginPath();
+                    ctx.arc(x, y, PIECE_RADIUS, 0, 2 * Math.PI);
+                    ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
+                    ctx.fill();
+                    ctx.strokeStyle = "#444";
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    let seqIdx = game.reviewMode ? game.reviewHistory.findIndex((h) => h[0] === r && h[1] === c) : game.history.findIndex((h) => h[0] === r && h[1] === c);
+                    if (seqIdx !== -1) {
+                        let seqNum = seqIdx + 1;
+                        ctx.font = `bold ${PIECE_RADIUS * 0.9}px "Segoe UI", "Microsoft YaHei"`;
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        let textColor = color[0] + color[1] + color[2] < 384 ? "#fff" : "#222";
+                        ctx.fillStyle = textColor;
+                        ctx.fillText(seqNum, x, y + 1);
+                        ctx.textAlign = "start";
+                        ctx.textBaseline = "alphabetic";
+                    }
+                }
+
+            if (game.showCoords) {
+                ctx.font = 'bold 20px "Segoe UI", "Microsoft YaHei"';
+                ctx.fillStyle = "#3a2a1a";
+                for (let i = 0; i < BOARD_SIZE; i++) {
+                    ctx.fillText(i + 1, BOARD_LEFT - 38, BOARD_TOP + i * CELL_SIZE + 8);
+                    ctx.fillText(String.fromCharCode(65 + i), BOARD_LEFT + i * CELL_SIZE - 14, BOARD_TOP + (BOARD_SIZE - 1) * CELL_SIZE + 42);
+                }
+            }
+
+            if (game.aiHints) {
+                ctx.font = 'bold 22px "Segoe UI", "Microsoft YaHei"';
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                for (let hint of game.aiHints) {
+                    let x = BOARD_LEFT + hint.c * CELL_SIZE;
+                    let y = BOARD_TOP + hint.r * CELL_SIZE;
+
+                    ctx.fillStyle = "rgba(220, 50, 50, 0.85)";
+                    ctx.beginPath();
+                    ctx.arc(x, y, PIECE_RADIUS * 0.8, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    ctx.strokeStyle = "#fff";
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.fillStyle = "#fff";
+                    ctx.fillText(hint.label, x, y + 2);
+                }
+                ctx.textAlign = "start";
+                ctx.textBaseline = "alphabetic";
+            }
+
+            if (game.lastMove) {
+                let [lr, lc] = game.lastMove;
+                let lx = BOARD_LEFT + lc * CELL_SIZE,
+                    ly = BOARD_TOP + lr * CELL_SIZE;
+                ctx.strokeStyle = "#ff4444";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(lx, ly, PIECE_RADIUS + 5, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+        }
+
+        // ----- 左侧面板：控制与设置 -----
+        function renderLeftPanel(leftDiv) {
+            if (game.reviewMode) {
+                leftDiv.innerHTML = `
+                                                        <div class="panel-title">&#9881;&#65039; 复盘</div>
+                                                        <div class="review-indicator">&#128204; 复盘进行中</div>
+                                                        <div class="group-title">&#9198;&#65039; 导航</div>
+                                                        <div class="button-row">
+                                                                <div class="btn" id="reviewPrev"><span class="btn-icon">&#9664;</span> 上一步</div>
+                                                                <div class="btn" id="reviewNext">下一步 <span class="btn-icon">&#9654;</span></div>
+                                                        </div>
+                                                        <div class="button-row">
+                                                                <div class="btn" id="reviewExit" style="width:100%;">
+                                                                        <span class="btn-icon">&#9167;&#65039;</span> 退出复盘
+                                                                </div>
+                                                        </div>`;
+                return;
+            }
+
+            let engineSettingsHtml = "";
+            if (game.mode === "eve") {
+                engineSettingsHtml = `
+                                                        <div class="group-title">&#9876;&#65039; 引擎设置</div>
+                                                        <div class="button-row" style="flex-direction:column; align-items:center; gap: 8px; margin-bottom: 8px;">
+                                                                <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 10px;">
+                                                                        <span style="color:#f2e3cf; font-size:16px;">引擎1 (黑):</span>
+                                                                        <select id="engine1Select" style="background:#2f2f3a; color:#f2e3cf; border:1px solid #7e6b5a; padding:6px; border-radius:8px; font-size:14px; width: 120px; outline: none;">
+                                                                                <option value="简单" ${game.engine1Diff === "简单" ? "selected" : ""}>简单</option>
+                                                                                <option value="中等" ${game.engine1Diff === "中等" ? "selected" : ""}>中等</option>
+                                                                                <option value="困难" ${game.engine1Diff === "困难" ? "selected" : ""}>困难</option>
+                                                                                <option value="引擎低" ${game.engine1Diff === "引擎低" ? "selected" : ""}>引擎低</option>
+                                                                                <option value="引擎中" ${game.engine1Diff === "引擎中" ? "selected" : ""}>引擎中</option>
+                                                                                <option value="引擎高" ${game.engine1Diff === "引擎高" ? "selected" : ""}>引擎高</option>
+                                                                        </select>
+                                                                </div>
+                                                                <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 10px;">
+                                                                        <span style="color:#f2e3cf; font-size:16px;">引擎2 (白):</span>
+                                                                        <select id="engine2Select" style="background:#2f2f3a; color:#f2e3cf; border:1px solid #7e6b5a; padding:6px; border-radius:8px; font-size:14px; width: 120px; outline: none;">
+                                                                                <option value="简单" ${game.engine2Diff === "简单" ? "selected" : ""}>简单</option>
+                                                                                <option value="中等" ${game.engine2Diff === "中等" ? "selected" : ""}>中等</option>
+                                                                                <option value="困难" ${game.engine2Diff === "困难" ? "selected" : ""}>困难</option>
+                                                                                <option value="引擎低" ${game.engine2Diff === "引擎低" ? "selected" : ""}>引擎低</option>
+                                                                                <option value="引擎中" ${game.engine2Diff === "引擎中" ? "selected" : ""}>引擎中</option>
+                                                                                <option value="引擎高" ${game.engine2Diff === "引擎高" ? "selected" : ""}>引擎高</option>
+                                                                        </select>
+                                                                </div>
+                                                                <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; margin-top: 4px;">
+                                                                        <span style="color:#f2e3cf; font-size:16px;">落子间隔:</span>
+                                                                        <select id="engineIntervalSelect" style="background:#2f2f3a; color:#f2e3cf; border:1px solid #7e6b5a; padding:6px; border-radius:8px; font-size:14px; width: 120px; outline: none;">
+                                                                                <option value="0" ${game.engineInterval === 0 ? "selected" : ""}>无延迟</option>
+                                                                                <option value="500" ${game.engineInterval === 500 ? "selected" : ""}>0.5秒</option>
+                                                                                <option value="1000" ${game.engineInterval === 1000 ? "selected" : ""}>1秒</option>
+                                                                                <option value="2000" ${game.engineInterval === 2000 ? "selected" : ""}>2秒</option>
+                                                                                <option value="5000" ${game.engineInterval === 5000 ? "selected" : ""}>5秒</option>
+                                                                        </select>
+                                                                </div>
+                                                        </div>
+                                                        <div class="button-row">
+                                                                <div class="btn small ${game.engineAutoPlay ? "active" : ""}" id="engineToggleBtn" style="flex:1;">
+                                                                        <span class="btn-icon">${game.engineAutoPlay ? "&#9208;&#65039;" : "&#9654;&#65039;"}</span>
+                                                                        ${game.engineAutoPlay ? "暂停对战" : "自动对战"}
+                                                                </div>
+                                                                <div class="btn small" id="engineNextBtn" style="flex:1;" ${game.engineAutoPlay ? 'style="opacity:0.5; cursor:not-allowed;"' : ""}>
+                                                                        <span class="btn-icon">&#9197;&#65039;</span> 下一步
+                                                                </div>
+                                                        </div>`;
+            } else {
+                engineSettingsHtml = `
+                                                        <div class="group-title">&#128202; 基础难度</div>
+                                                        <div class="button-row">
+                                                                <div class="btn small ${game.difficulty === "简单" ? "active" : ""}" id="diff0"><span class="btn-icon">★</span> 简单</div>
+                                                                <div class="btn small ${game.difficulty === "中等" ? "active" : ""}" id="diff1"><span class="btn-icon">★★</span> 中等</div>
+                                                                <div class="btn small ${game.difficulty === "困难" ? "active" : ""}" id="diff2"><span class="btn-icon">★★★</span> 困难</div>
+                                                        </div>
+                                                        <div class="group-title">&#128640; 引擎难度</div>
+                                                        <div class="button-row">
+                                                                <div class="btn small ${game.difficulty === "引擎低" ? "active" : ""}" id="diff3"><span class="btn-icon">1&#65039;&#8419;</span> 引擎低</div>
+                                                                <div class="btn small ${game.difficulty === "引擎中" ? "active" : ""}" id="diff4"><span class="btn-icon">2&#65039;&#8419;</span> 引擎中</div>
+                                                                <div class="btn small ${game.difficulty === "引擎高" ? "active" : ""}" id="diff5"><span class="btn-icon">3&#65039;&#8419;</span> 引擎高</div>
+                                                        </div>`;
+            }
+
+            let statusText =
+                game.winner !== WINNER_NONE ? (game.winner === WINNER_DRAW ? "&#129309; 平局" : game.winner === PLAYER_BLACK ? "&#9899; 黑胜" : "&#9898; 白胜") : game.turn === PLAYER_BLACK ? "&#9899; 黑棋走" : "&#9898; 白棋走";
+
+            if (game.aiThinking) {
+                statusText = "&#129300; AI 思考中...";
+            } else if (game.aiAnalyzing) {
+                statusText = "&#128269; AI 分析中...";
+            }
+
+            leftDiv.innerHTML = `
+                                                <div class="panel-title">&#9899; 五子棋</div>
+                                                <div class="group-title">&#127918; 模式</div>
+                                                <div class="button-row">
+                                                        <div class="btn ${game.mode === "pve" ? "active" : ""}" id="modePve"><span class="btn-icon">&#129302;</span> 人机</div>
+                                                        <div class="btn ${game.mode === "pvp" ? "active" : ""}" id="modePvp"><span class="btn-icon">&#128101;</span> 人人</div>
+                                                </div>
+                                                <div class="button-row">
+                                                        <div class="btn ${game.mode === "eve" ? "active" : ""}" id="modeEve" style="width:100%;">
+                                                                <span class="btn-icon">&#9876;&#65039;</span> 引擎对战
+                                                        </div>
+                                                </div>
+
+                                                ${engineSettingsHtml}
+
+                                                <div class="status-area">${statusText}</div>
+
+                                                <div class="group-title">&#128377;&#65039; 控制</div>
+                                                <div class="button-row">
+                                                        <div class="btn small" id="resetBtn"><span class="btn-icon">&#128260;</span> 重开</div>
+                                                        <div class="btn small" id="undoBtn"><span class="btn-icon">&#8617;&#65039;</span> 悔棋</div>
+                                                        <div class="btn small" id="toggleCoords"><span class="btn-icon">&#128506;&#65039;</span> 坐标</div>
+                                                </div>
+                                        `;
+        }
+
+        // ----- 右侧面板：棋谱与提示 -----
+        function renderRightPanel(rightDiv) {
+            if (game.reviewMode) {
+                rightDiv.innerHTML = `
+                                                        <div class="panel-title">&#128193; 棋谱信息</div>
+                                                        <div style="font-size:22px; padding:20px; text-align:center;">步数: ${game.reviewHistory.length}</div>
+                                                        <div class="group-title">&#128200; AI 分析</div>
+                                                        <div class="button-row">
+                                                                <div class="btn ${game.aiAnalyzing ? "active" : ""}" id="reviewAIBtn" style="width:100%;">
+                                                                        <span class="btn-icon">${game.aiAnalyzing ? "&#8987;" : "&#128200;"}</span>
+                                                                        ${game.aiAnalyzing ? "分析中..." : "AI 分析"}
+                                                                </div>
+                                                        </div>
+                                                        <div class="button-row">
+                                                                <div class="btn" id="reviewAIClearBtn" style="width:100%;">
+                                                                        <span class="btn-icon">&#10060;</span> 清除分析
+                                                                </div>
+                                                        </div>
+                                                        <div style="font-size:14px; color:#aabbcc; text-align:center; margin-top:8px;">
+                                                                提示：AI分析当前盘面，给出最佳建议
+                                                        </div>`;
+                return;
+            }
+
+            rightDiv.innerHTML = `
+                                                <div class="panel-title">&#128194; 棋谱</div>
+                                                <div class="group-title">&#128190; 保存 / 加载</div>
+                                                <div class="button-row" style="gap: 16px;">
+                                                        <div class="btn" id="saveBtn"><span class="btn-icon">&#128190;</span> 保存</div>
+                                                        <div class="btn" id="loadBtn"><span class="btn-icon">&#128193;</span> 加载</div>
+                                                </div>
+                                                <div style="margin-top: 20px;"></div>
+                                                <div class="group-title">&#128269; AI 分析</div>
+                                                <div class="button-row">
+                                                        <div class="btn" id="analyzeBtn" style="width:100%;"><span class="btn-icon">&#129504;</span> AI分析三步</div>
+                                                </div>
+                                                <div style="margin-top: 20px;"></div>
+                                                <div class="group-title">&#128161; 提示</div>
+                                                <div style="background:#2d2d3a; border-radius: 36px; padding: 22px; font-size: 18px; text-align: center; border:1px solid #b5976b;">
+                                                        <span class="btn-icon" style="margin-right: 8px;">&#128307;</span> 点击棋盘落子<br>
+                                                        <span class="btn-icon" style="margin-right: 8px;">&#129302;</span> 引擎支持深度剪枝
+                                                </div>
+                                        `;
+        }
+
+        function renderPanels() {
+            const leftDiv = document.getElementById("leftPanel");
+            const rightDiv = document.getElementById("rightPanel");
+
+            renderLeftPanel(leftDiv);
+            renderRightPanel(rightDiv);
+
+            // 绑定复盘事件
+            if (game.reviewMode) {
+                document.getElementById("reviewPrev")?.addEventListener("click", () => {
+                    if (typeof stopAIAnalysis === "function") stopAIAnalysis();
+                    game.reviewBackward();
+                    drawBoard();
+                    renderPanels();
+                });
+                document.getElementById("reviewNext")?.addEventListener("click", () => {
+                    if (typeof stopAIAnalysis === "function") stopAIAnalysis();
+                    game.reviewForward();
+                    drawBoard();
+                    renderPanels();
+                });
+                document.getElementById("reviewExit")?.addEventListener("click", () => {
+                    if (typeof stopAIAnalysis === "function") stopAIAnalysis();
+                    game.exitReview();
+                    drawBoard();
+                    renderPanels();
+                });
+                document.getElementById("reviewAIBtn")?.addEventListener("click", () => {
+                    if (game.aiAnalyzing) return;
+                    if (typeof stopAIAnalysis === "function") stopAIAnalysis();
+                    const worker = getAIWorker();
+                    game.aiAnalyzing = true;
+                    renderPanels();
+                    let analyzeColor = PLAYER_BLACK;
+                    if (game.reviewStep >= 0 && game.reviewHistory.length > 0) {
+                        let lastPlayer = game.reviewHistory[game.reviewStep][2];
+                        analyzeColor = lastPlayer === PLAYER_BLACK ? PLAYER_WHITE : PLAYER_BLACK;
+                    }
+                    worker.postMessage({
+                        type: "analyze",
+                        board: JSON.parse(JSON.stringify(game.board)),
+                        color: analyzeColor,
+                        depth: 7,
+                        width: 14,
+                    });
+                });
+                document.getElementById("reviewAIClearBtn")?.addEventListener("click", () => {
+                    if (typeof stopAIAnalysis === "function") stopAIAnalysis();
+                    game.aiHints = null;
+                    drawBoard();
+                    renderPanels();
+                });
+                return;
+            }
+
+            // 绑定模式切换事件
+            document.getElementById("modePve")?.addEventListener("click", () => {
+                if (game.mode !== "pve") {
+                    game.mode = "pve";
+                    game.reset();
+                    drawBoard();
+                    renderPanels();
+                }
+            });
+            document.getElementById("modePvp")?.addEventListener("click", () => {
+                if (game.mode !== "pvp") {
+                    game.mode = "pvp";
+                    game.reset();
+                    drawBoard();
+                    renderPanels();
+                }
+            });
+            document.getElementById("modeEve")?.addEventListener("click", () => {
+                if (game.mode !== "eve") {
+                    game.mode = "eve";
+                    game.reset();
+                    drawBoard();
+                    renderPanels();
+                }
+            });
+
+            // 绑定引擎对战设置事件
+            document.getElementById("engine1Select")?.addEventListener("change", (e) => {
+                game.engine1Diff = e.target.value;
+                renderPanels();
+            });
+            document.getElementById("engine2Select")?.addEventListener("change", (e) => {
+                game.engine2Diff = e.target.value;
+                renderPanels();
+            });
+            document.getElementById("engineIntervalSelect")?.addEventListener("change", (e) => {
+                game.engineInterval = parseInt(e.target.value);
+                renderPanels();
+            });
+            document.getElementById("engineToggleBtn")?.addEventListener("click", () => {
+                game.engineAutoPlay = !game.engineAutoPlay;
+                renderPanels();
+            });
+            document.getElementById("engineNextBtn")?.addEventListener("click", () => {
+                if (!game.engineAutoPlay && !game.aiThinking) {
+                    game.engineForceNext = true;
+                }
+            });
+
+            // 绑定基础/引擎难度设置事件
+            const diffNames = ["简单", "中等", "困难", "引擎低", "引擎中", "引擎高"];
+            for (let i = 0; i < 6; i++) {
+                document.getElementById(`diff${i}`)?.addEventListener("click", () => {
+                    game.difficulty = diffNames[i];
+                    renderPanels();
+                });
+            }
+
+            // 绑定控制按钮事件
+            document.getElementById("resetBtn")?.addEventListener("click", () => {
+                game.reset();
+                const modal = document.querySelector(".victory-modal");
+                if (modal) modal.remove();
+                drawBoard();
+                renderPanels();
+            });
+            document.getElementById("undoBtn")?.addEventListener("click", () => {
+                if (game.undo()) {
+                    drawBoard();
+                    renderPanels();
+                } else {
+                    alert("无法悔棋！（无历史记录/复盘模式/AI思考中）");
+                }
+            });
+            document.getElementById("toggleCoords")?.addEventListener("click", () => {
+                game.showCoords = !game.showCoords;
+                drawBoard();
+                renderPanels();
+            });
+
+            // 绑定棋谱相关事件
+            document.getElementById("saveBtn")?.addEventListener("click", () => {
+                if (game.history.length) {
+                    const json = game.saveSgf();
+                    const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+                    const a = document.createElement("a");
+                    const url = URL.createObjectURL(blob);
+                    a.href = url;
+                    a.download = "gobang.json";
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 0);
+                } else {
+                    alert("无棋谱");
+                }
+            });
+            document.getElementById("loadBtn")?.addEventListener("click", () => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = ".json";
+                input.onchange = (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 1024 * 1024) {
+                        alert("文件过大，最大支持 1MB");
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onerror = () => {
+                        alert("读取文件失败");
+                    };
+                    reader.onload = (ev) => {
+                        const content = typeof ev.target?.result === "string" ? ev.target.result : "";
+                        if (game.loadSgf(content)) {
+                            drawBoard();
+                            renderPanels();
+                        } else {
+                            alert("加载失败：棋谱格式非法或内容异常");
+                        }
+                    };
+                    reader.readAsText(file, "utf-8");
+                };
+                input.click();
+            });
+            document.getElementById("analyzeBtn")?.addEventListener("click", () => {
+                if (typeof startAIAnalysis === "function") startAIAnalysis();
+            });
+        }
+
+        canvas.addEventListener("click", (e) => {
+            if (game.isUndoing || game.aiThinking) return;
+            const rect = canvas.getBoundingClientRect();
+            const scale = canvas.width / rect.width;
+            const mouseX = (e.clientX - rect.left) * scale;
+            const mouseY = (e.clientY - rect.top) * scale;
+            if (mouseX >= BOARD_LEFT && mouseX <= BOARD_LEFT + (BOARD_SIZE - 1) * CELL_SIZE && mouseY >= BOARD_TOP && mouseY <= BOARD_TOP + (BOARD_SIZE - 1) * CELL_SIZE) {
+                let col = Math.round((mouseX - BOARD_LEFT) / CELL_SIZE);
+                let row = Math.round((mouseY - BOARD_TOP) / CELL_SIZE);
+                row = Math.max(0, Math.min(BOARD_SIZE - 1, row));
+                col = Math.max(0, Math.min(BOARD_SIZE - 1, col));
+                if (!game.reviewMode) {
+                    let isPlaced = false;
+                    if (game.mode === "pve" && game.turn === PLAYER_BLACK && game.winner === WINNER_NONE) isPlaced = game.placePiece(row, col);
+                    else if (game.mode === "pvp" && game.winner === WINNER_NONE) isPlaced = game.placePiece(row, col);
+                    if (isPlaced) {
+                        drawBoard();
+                        renderPanels();
+                    }
+                }
+            }
+        });
+
+        window.addEventListener("beforeunload", () => {
+            if (aiWorker) {
+                aiWorker.terminate();
+                aiWorker = null;
+            }
+            if (aiWorkerUrl) {
+                URL.revokeObjectURL(aiWorkerUrl);
+                aiWorkerUrl = null;
+            }
+        });
+
+        function loop() {
+            drawBoard();
+            aiTurn();
+            requestAnimationFrame(loop);
+        }
+
+        const aiWorkerScript = `
+                                        const BOARD_SIZE = 15;
+                                        const EMPTY = 0;
+                                        const PLAYER_BLACK = 1;
+                                        const PLAYER_WHITE = 2;
+                                        const DIRECTIONS = [
+                                                [1, 0],
+                                                [0, 1],
+                                                [1, 1],
+                                                [1, -1]
+                                        ];
+
+                                        class AI {
+                                                constructor(board) {
+                                                        this.board = board;
+                                                        this.killerMoves = {};
+                                                        this.historyTable = {};
+                                                        this.transpositionTable = new Map();
+                                                        this.zobristTable = this.initZobristTable();
+                                                        this.zobristCurrent = 0;
+                                                        this.moveCache = new Map();
+                                                }
+
+                                                initZobristTable() {
+                                                        const table = [];
+                                                        for (let r = 0; r < BOARD_SIZE; r++) {
+                                                                table[r] = [];
+                                                                for (let c = 0; c < BOARD_SIZE; c++) {
+                                                                        table[r][c] = [0, 0];
+                                                                        for (let p = 0; p < 2; p++) {
+                                                                                let val = 0;
+                                                                                for (let i = 0; i < 64; i++) {
+                                                                                        val = (val * 1103515245 + 12345) ^ (Math.random() * 4294967296);
+                                                                                }
+                                                                                table[r][c][p] = val >>> 0;
+                                                                        }
+                                                                }
+                                                        }
+                                                        return table;
+                                                }
+
+                                                computeZobristHash() {
+                                                        let hash = 0;
+                                                        for (let r = 0; r < BOARD_SIZE; r++) {
+                                                                for (let c = 0; c < BOARD_SIZE; c++) {
+                                                                        if (this.board[r][c] !== EMPTY) {
+                                                                                const p = this.board[r][c] - 1;
+                                                                                hash ^= this.zobristTable[r][c][p];
+                                                                        }
+                                                                }
+                                                        }
+                                                        return hash;
+                                                }
+
+                                                getHistoryScore(r, c) {
+                                                        return this.historyTable[r+","+c] || 0;
+                                                }
+
+                                                addHistoryScore(r, c, depth) {
+                                                        const key = r+","+c;
+                                                        this.historyTable[key] = (this.historyTable[key] || 0) + depth * depth;
+                                                }
+
+                                                getKillerMoves(depth) {
+                                                        return this.killerMoves[depth] || [];
+                                                }
+
+                                                addKillerMove(depth, r, c) {
+                                                        if (!this.killerMoves[depth]) {
+                                                                this.killerMoves[depth] = [];
+                                                        }
+                                                        const existing = this.killerMoves[depth].find(k => k.r === r && k.c === c);
+                                                        if (existing) {
+                                                                existing.count++;
+                                                        } else {
+                                                                this.killerMoves[depth].push({ r, c, count: 1 });
+                                                        }
+                                                }
+
+                                                isKillerMove(depth, r, c) {
+                                                        const killers = this.getKillerMoves(depth);
+                                                        return killers.find(k => k.r === r && k.c === c);
+                                                }
+
+                                                sortCandidatesWithHeuristics(candidates, depth) {
+                                                        if (!this.historyTable) return candidates;
+
+                                                        return candidates.sort((a, b) => {
+                                                                let scoreA = a.score + this.getHistoryScore(a.r, a.c);
+                                                                let scoreB = b.score + this.getHistoryScore(b.r, b.c);
+                                                                const killerA = this.isKillerMove(depth, a.r, a.c);
+                                                                const killerB = this.isKillerMove(depth, b.r, b.c);
+                                                                if (killerA && killerB) {
+                                                                        scoreA += killerA.count * 1000;
+                                                                        scoreB += killerB.count * 1000;
+                                                                } else if (killerA) {
+                                                                        scoreA += 1000;
+                                                                } else if (killerB) {
+                                                                        scoreB += 1000;
+                                                                }
+                                                                return scoreB - scoreA;
+                                                        });
+                                                }
+
+                                                checkWin(row, col) {
+                                                        const player = this.board[row][col];
+                                                        for (let [dr, dc] of DIRECTIONS) {
+                                                                let count = 1;
+                                                                for (let i = 1; i < 5; i++) {
+                                                                        let nr = row + dr * i, nc = col + dc * i;
+                                                                        if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || this.board[nr][nc] !== player) break;
+                                                                        count++;
+                                                                }
+                                                                for (let i = 1; i < 5; i++) {
+                                                                        let nr = row - dr * i, nc = col - dc * i;
+                                                                        if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || this.board[nr][nc] !== player) break;
+                                                                        count++;
+                                                                }
+                                                                if (count >= 5) return true;
+                                                        }
+                                                        return false;
+                                                }
+
+                                                evaluateMove(r, c, color) {
+                                                        if (this.board[r][c] !== EMPTY) return 0;
+                                                        const cacheKey = r + "," + c + "," + color;
+                                                        if (this.moveCache.has(cacheKey)) {
+                                                                return this.moveCache.get(cacheKey);
+                                                        }
+                                                        let total = 0;
+                                                        for (let [dr, dc] of DIRECTIONS) {
+                                                                let cnt1 = 0, cnt2 = 0;
+                                                                for (let i = 1; i < 5; i++) {
+                                                                        let rr = r + dr * i, cc = c + dc * i;
+                                                                        if (rr < 0 || rr >= BOARD_SIZE || cc < 0 || cc >= BOARD_SIZE || this.board[rr][cc] !== color) break;
+                                                                        cnt1++;
+                                                                }
+                                                                for (let i = 1; i < 5; i++) {
+                                                                        let rr = r - dr * i, cc = c - dc * i;
+                                                                        if (rr < 0 || rr >= BOARD_SIZE || cc < 0 || cc >= BOARD_SIZE || this.board[rr][cc] !== color) break;
+                                                                        cnt2++;
+                                                                }
+                                                                let totalLen = 1 + cnt1 + cnt2;
+                                                                if (totalLen >= 5) {
+                                                                        this.moveCache.set(cacheKey, 1000000);
+                                                                        return 1000000;
+                                                                }
+                                                                let leftOpen = true, rightOpen = true;
+                                                                let rr = r + (cnt1 + 1) * dr, cc = c + (cnt1 + 1) * dc;
+                                                                if (rr >= 0 && rr < BOARD_SIZE && cc >= 0 && cc < BOARD_SIZE && this.board[rr][cc] !== EMPTY) rightOpen = false;
+                                                                rr = r - (cnt2 + 1) * dr; cc = c - (cnt2 + 1) * dc;
+                                                                if (rr >= 0 && rr < BOARD_SIZE && cc >= 0 && cc < BOARD_SIZE && this.board[rr][cc] !== EMPTY) leftOpen = false;
+                                                                let live = leftOpen && rightOpen;
+                                                                if (totalLen === 4 && live) {
+                                                                        this.moveCache.set(cacheKey, 100000);
+                                                                        return 100000;
+                                                                }
+                                                                if (totalLen === 4) total += 2000;
+                                                                else if (totalLen === 3 && live) total += 2500;
+                                                                else if (totalLen === 3) total += 400;
+                                                                else total += totalLen * totalLen;
+                                                        }
+                                                        this.moveCache.set(cacheKey, total);
+                                                        return total;
+                                                }
+
+                                                fastEvaluateBoard(color) {
+                                                        let opp = color === PLAYER_BLACK ? PLAYER_WHITE : PLAYER_BLACK;
+                                                        let aiScore = 0;
+                                                        let playerScore = 0;
+
+                                                        for (let r = 0; r < BOARD_SIZE; r++) {
+                                                                for (let c = 0; c < BOARD_SIZE; c++) {
+                                                                        if (this.board[r][c] === color) {
+                                                                                aiScore += this.evaluateLineStrength(r, c, color);
+                                                                        } else if (this.board[r][c] === opp) {
+                                                                                playerScore += this.evaluateLineStrength(r, c, opp);
+                                                                        }
+                                                                }
+                                                        }
+
+                                                        for (let r = 0; r < BOARD_SIZE; r++) {
+                                                                for (let c = 0; c < BOARD_SIZE; c++) {
+                                                                        if (this.board[r][c] === EMPTY) {
+                                                                                let aiThreat = this.evaluateMove(r, c, color);
+                                                                                let playerThreat = this.evaluateMove(r, c, opp);
+                                                                                aiScore += aiThreat * 0.8;
+                                                                                playerScore += playerThreat * 0.8;
+                                                                                if (aiThreat >= 1000000) aiScore += 200000;
+                                                                                if (playerThreat >= 1000000) playerScore += 200000;
+                                                                                if (aiThreat >= 10000) aiScore += 30000;
+                                                                                if (playerThreat >= 10000) playerScore += 30000;
+                                                                        }
+                                                                }
+                                                        }
+
+                                                        return aiScore - playerScore * 1.5;
+                                                }
+
+                                                evaluateLineStrength(r, c, color) {
+                                                        let total = 0;
+                                                        for (let [dr, dc] of DIRECTIONS) {
+                                                                let cnt1 = 0, cnt2 = 0;
+                                                                for (let i = 1; i < 5; i++) {
+                                                                        let rr = r + dr * i, cc = c + dc * i;
+                                                                        if (rr < 0 || rr >= BOARD_SIZE || cc < 0 || cc >= BOARD_SIZE || this.board[rr][cc] !== color) break;
+                                                                        cnt1++;
+                                                                }
+                                                                for (let i = 1; i < 5; i++) {
+                                                                        let rr = r - dr * i, cc = c - dc * i;
+                                                                        if (rr < 0 || rr >= BOARD_SIZE || cc < 0 || cc >= BOARD_SIZE || this.board[rr][cc] !== color) break;
+                                                                        cnt2++;
+                                                                }
+                                                                let totalLen = 1 + cnt1 + cnt2;
+                                                                let leftOpen = true, rightOpen = true;
+                                                                let rr = r + (cnt1 + 1) * dr, cc = c + (cnt1 + 1) * dc;
+                                                                if (rr >= 0 && rr < BOARD_SIZE && cc >= 0 && cc < BOARD_SIZE && this.board[rr][cc] !== EMPTY) rightOpen = false;
+                                                                rr = r - (cnt2 + 1) * dr; cc = c - (cnt2 + 1) * dc;
+                                                                if (rr >= 0 && rr < BOARD_SIZE && cc >= 0 && cc < BOARD_SIZE && this.board[rr][cc] !== EMPTY) leftOpen = false;
+                                                                let live = leftOpen && rightOpen;
+
+                                                                if (totalLen >= 5) total += 500000;
+                                                                else if (totalLen === 4 && live) total += 80000;
+                                                                else if (totalLen === 4) total += 15000;
+                                                                else if (totalLen === 3 && live) total += 5000;
+                                                                else if (totalLen === 3) total += 800;
+                                                                else if (totalLen === 2 && live) total += 400;
+                                                                else if (totalLen === 2) total += 50;
+                                                        }
+                                                        return total;
+                                                }
+
+                                                generateCandidates(color) {
+                                                        this.moveCache.clear();
+                                                        let candidates = [];
+                                                        let pieceCount = 0;
+                                                        let opponent = color === PLAYER_BLACK ? PLAYER_WHITE : PLAYER_BLACK;
+
+                                                        for (let r = 0; r < BOARD_SIZE; r++) {
+                                                                for (let c = 0; c < BOARD_SIZE; c++) {
+                                                                        if (this.board[r][c] !== EMPTY) {
+                                                                                pieceCount++;
+                                                                                continue;
+                                                                        }
+                                                                }
+                                                        }
+
+                                                        if (pieceCount <= 1) {
+                                                                let centerR = Math.floor(BOARD_SIZE / 2);
+                                                                let centerC = Math.floor(BOARD_SIZE / 2);
+
+                                                                if (pieceCount === 0) {
+                                                                        return [{ r: centerR, c: centerC, score: 0 }];
+                                                                }
+
+                                                                let candidates = [];
+                                                                let priorityMoves = [
+                                                                        { r: centerR, c: centerC },
+                                                                        { r: centerR - 1, c: centerC - 1 },
+                                                                        { r: centerR - 1, c: centerC },
+                                                                        { r: centerR - 1, c: centerC + 1 },
+                                                                        { r: centerR, c: centerC - 1 },
+                                                                        { r: centerR, c: centerC + 1 },
+                                                                        { r: centerR + 1, c: centerC - 1 },
+                                                                        { r: centerR + 1, c: centerC },
+                                                                        { r: centerR + 1, c: centerC + 1 }
+                                                                ];
+
+                                                                for (let move of priorityMoves) {
+                                                                        if (move.r >= 0 && move.r < BOARD_SIZE && move.c >= 0 && move.c < BOARD_SIZE && this.board[move.r][move.c] === EMPTY) {
+                                                                                let scoreSelf = this.evaluateMove(move.r, move.c, color);
+                                                                                let scoreOpp = this.evaluateMove(move.r, move.c, opponent);
+                                                                                let priority = scoreSelf + scoreOpp;
+                                                                                candidates.push({ r: move.r, c: move.c, score: priority });
+                                                                        }
+                                                                }
+
+                                                                if (candidates.length === 0) {
+                                                                        return [{ r: centerR, c: centerC, score: 0 }];
+                                                                }
+
+                                                                candidates.sort((a, b) => b.score - a.score);
+                                                                return candidates.slice(0, 10);
+                                                        }
+
+                                                        for (let r = 0; r < BOARD_SIZE; r++) {
+                                                                for (let c = 0; c < BOARD_SIZE; c++) {
+                                                                        if (this.board[r][c] !== EMPTY) {
+                                                                                continue;
+                                                                        }
+                                                                        let adjacent = false;
+                                                                        for (let dr = -2; dr <= 2; dr++) {
+                                                                                for (let dc = -2; dc <= 2; dc++) {
+                                                                                        if (dr === 0 && dc === 0) continue;
+                                                                                        let nr = r + dr, nc = c + dc;
+                                                                                        if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && this.board[nr][nc] !== EMPTY) {
+                                                                                                adjacent = true;
+                                                                                                break;
+                                                                                        }
+                                                                                }
+                                                                                if (adjacent) break;
+                                                                        }
+                                                                        if (adjacent) {
+                                                                                let scoreSelf = this.evaluateMove(r, c, color);
+                                                                                let scoreOpp = this.evaluateMove(r, c, opponent);
+                                                                                let priority = scoreSelf + scoreOpp;
+                                                                                if (scoreSelf >= 1000000) priority += 10000000;
+                                                                                else if (scoreOpp >= 1000000) priority += 5000000;
+                                                                                else if (scoreSelf >= 10000) priority += 100000;
+                                                                                else if (scoreOpp >= 10000) priority += 50000;
+                                                                                candidates.push({ r, c, score: priority });
+                                                                        }
+                                                                }
+                                                        }
+                                                        candidates.sort((a, b) => b.score - a.score);
+                                                        return candidates;
+                                                }
+
+                                                minimax(depth, alpha, beta, isMaximizing, lastR, lastC, width, aiColor) {
+                                                        let oppColor = aiColor === PLAYER_BLACK ? PLAYER_WHITE : PLAYER_BLACK;
+
+                                                        const hash = this.computeZobristHash();
+                                                        const ttKey = hash + "_" + depth + "_" + isMaximizing + "_" + aiColor;
+                                                        const ttEntry = this.transpositionTable.get(ttKey);
+                                                        if (ttEntry && ttEntry.depth >= depth) {
+                                                                if (ttEntry.type === 'EXACT') return ttEntry.score;
+                                                                if (ttEntry.type === 'LOWER' && ttEntry.score >= beta) return ttEntry.score;
+                                                                if (ttEntry.type === 'UPPER' && ttEntry.score <= alpha) return ttEntry.score;
+                                                        }
+
+                                                        if (lastR !== -1 && this.checkWin(lastR, lastC)) {
+                                                                const winner = this.board[lastR][lastC];
+                                                                if (winner === aiColor) {
+                                                                        return 100000000 + depth;
+                                                                } else {
+                                                                        return -100000000 - depth;
+                                                                }
+                                                        }
+                                                        if (depth === 0) {
+                                                                return this.fastEvaluateBoard(aiColor);
+                                                        }
+
+                                                        let candidates = this.generateCandidates(isMaximizing ? aiColor : oppColor).slice(0, width);
+                                                        if (candidates.length === 0) return 0;
+
+                                                        candidates = this.sortCandidatesWithHeuristics(candidates, depth);
+
+                                                        let bestMove = null;
+                                                        if (isMaximizing) {
+                                                                let maxEval = -Infinity;
+                                                                for (let move of candidates) {
+                                                                        this.board[move.r][move.c] = aiColor;
+                                                                        let ev = this.minimax(depth - 1, alpha, beta, false, move.r, move.c, width, aiColor);
+                                                                        this.board[move.r][move.c] = EMPTY;
+                                                                        if (ev > maxEval) {
+                                                                                maxEval = ev;
+                                                                                bestMove = move;
+                                                                        }
+                                                                        alpha = Math.max(alpha, ev);
+                                                                        if (beta <= alpha) {
+                                                                                this.addKillerMove(depth, move.r, move.c);
+                                                                                this.addHistoryScore(move.r, move.c, depth);
+                                                                                break;
+                                                                        }
+                                                                }
+                                                                this.transpositionTable.set(ttKey, { type: 'EXACT', score: maxEval, depth, move: bestMove });
+                                                                return maxEval;
+                                                        } else {
+                                                                let minEval = Infinity;
+                                                                for (let move of candidates) {
+                                                                        this.board[move.r][move.c] = oppColor;
+                                                                        let ev = this.minimax(depth - 1, alpha, beta, true, move.r, move.c, width, aiColor);
+                                                                        this.board[move.r][move.c] = EMPTY;
+                                                                        if (ev < minEval) {
+                                                                                minEval = ev;
+                                                                                bestMove = move;
+                                                                        }
+                                                                        beta = Math.min(beta, ev);
+                                                                        if (beta <= alpha) {
+                                                                                this.addKillerMove(depth, move.r, move.c);
+                                                                                this.addHistoryScore(move.r, move.c, depth);
+                                                                                break;
+                                                                        }
+                                                                }
+                                                                this.transpositionTable.set(ttKey, { type: 'EXACT', score: minEval, depth, move: bestMove });
+                                                                return minEval;
+                                                        }
+                                                }
+
+                                                analyzeTop3(depth, width, color) {
+                                                        let candidates = this.generateCandidates(color).slice(0, width);
+                                                        if (candidates.length === 0) return [];
+                                                        if (candidates.length === 1) return [{r: candidates[0].r, c: candidates[0].c, score: 0}];
+
+                                                        let results = [];
+                                                        let alpha = -Infinity;
+                                                        let beta = Infinity;
+
+                                                        candidates = this.sortCandidatesWithHeuristics(candidates, depth);
+
+                                                        for (let move of candidates) {
+                                                                this.board[move.r][move.c] = color;
+                                                                let score = this.minimax(depth - 1, alpha, beta, false, move.r, move.c, width, color);
+                                                                this.board[move.r][move.c] = EMPTY;
+                                                                results.push({ r: move.r, c: move.c, score: score });
+                                                                alpha = Math.max(alpha, score);
+                                                        }
+                                                        results.sort((a, b) => b.score - a.score);
+                                                        return results.slice(0, 3);
+                                                }
+
+                                                aiMoveEasy(color) {
+                                                        let opp = color === PLAYER_BLACK ? PLAYER_WHITE : PLAYER_BLACK;
+                                                        let weights = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(0));
+                                                        for (let r = 0; r < BOARD_SIZE; r++) {
+                                                                for (let c = 0; c < BOARD_SIZE; c++) {
+                                                                        if (this.board[r][c] !== EMPTY) continue;
+                                                                        let score = 0;
+                                                                        let hasFiveSelf = false;
+                                                                        let hasFiveOpp = false;
+                                                                        for (let [dr, dc] of DIRECTIONS) {
+                                                                                let cnt = 1;
+                                                                                for (let i = 1; i < 5; i++) {
+                                                                                        let rr = r + dr * i, cc = c + dc * i;
+                                                                                        if (rr < 0 || rr >= BOARD_SIZE || cc < 0 || cc >= BOARD_SIZE || this.board[rr][cc] !== color) break;
+                                                                                        cnt++;
+                                                                                }
+                                                                                for (let i = 1; i < 5; i++) {
+                                                                                        let rr = r - dr * i, cc = c - dc * i;
+                                                                                        if (rr < 0 || rr >= BOARD_SIZE || cc < 0 || cc >= BOARD_SIZE || this.board[rr][cc] !== color) break;
+                                                                                        cnt++;
+                                                                                }
+                                                                                if (cnt >= 5) {
+                                                                                        hasFiveSelf = true;
+                                                                                        break;
+                                                                                }
+                                                                                else score += cnt * cnt;
+                                                                        }
+                                                                        if (hasFiveSelf) return [r, c];
+                                                                        for (let [dr, dc] of DIRECTIONS) {
+                                                                                let cnt = 1;
+                                                                                for (let i = 1; i < 5; i++) {
+                                                                                        let rr = r + dr * i, cc = c + dc * i;
+                                                                                        if (rr < 0 || rr >= BOARD_SIZE || cc < 0 || cc >= BOARD_SIZE || this.board[rr][cc] !== opp) break;
+                                                                                        cnt++;
+                                                                                }
+                                                                                for (let i = 1; i < 5; i++) {
+                                                                                        let rr = r - dr * i, cc = c - dc * i;
+                                                                                        if (rr < 0 || rr >= BOARD_SIZE || cc < 0 || cc >= BOARD_SIZE || this.board[rr][cc] !== opp) break;
+                                                                                        cnt++;
+                                                                                }
+                                                                                if (cnt >= 5) {
+                                                                                        hasFiveOpp = true;
+                                                                                        break;
+                                                                                }
+                                                                                else score += cnt * cnt * 0.8;
+                                                                        }
+                                                                        if (hasFiveOpp) score += 8000;
+                                                                        weights[r][c] = score;
+                                                                }
+                                                        }
+                                                        let maxScore = -1, best = null;
+                                                        for (let r = 0; r < BOARD_SIZE; r++)
+                                                                for (let c = 0; c < BOARD_SIZE; c++)
+                                                                        if (weights[r][c] > maxScore) {
+                                                                                maxScore = weights[r][c];
+                                                                                best = [r, c];
+                                                                        }
+                                                        return best;
+                                                }
+
+                                                aiMoveMedium(defenseWeight, color) {
+                                                        let opp = color === PLAYER_BLACK ? PLAYER_WHITE : PLAYER_BLACK;
+                                                        let bestScore = -1, bestMove = null;
+                                                        for (let r = 0; r < BOARD_SIZE; r++) {
+                                                                for (let c = 0; c < BOARD_SIZE; c++) {
+                                                                        if (this.board[r][c] !== EMPTY) continue;
+                                                                        let attack = this.evaluateMove(r, c, color);
+                                                                        if (attack >= 1000000) return [r, c];
+                                                                        let defense = this.evaluateMove(r, c, opp);
+                                                                        if (defense >= 1000000) {
+                                                                                bestMove = [r, c];
+                                                                                bestScore = defense * defenseWeight;
+                                                                                continue;
+                                                                        }
+                                                                        let total = attack + defense * defenseWeight;
+                                                                        if (total > bestScore) {
+                                                                                bestScore = total;
+                                                                                bestMove = [r, c];
+                                                                        }
+                                                                }
+                                                        }
+                                                        return bestMove;
+                                                }
+
+                                                aiMoveEngine(depth, width, color) {
+                                                        let opp = color === PLAYER_BLACK ? PLAYER_WHITE : PLAYER_BLACK;
+                                                        let candidates = this.generateCandidates(color).slice(0, width);
+                                                        if (candidates.length <= 1) return [...candidates];
+
+                                                        let pieceCount = 0;
+                                                        for (let r = 0; r < BOARD_SIZE; r++) {
+                                                                for (let c = 0; c < BOARD_SIZE; c++) {
+                                                                        if (this.board[r][c] !== EMPTY) {
+                                                                                pieceCount++;
+                                                                                continue;
+                                                                        }
+                                                                }
+                                                        }
+                                                        if (pieceCount > 3) {
+                                                                for (let i = 0; i < candidates.length; i++) {
+                                                                        if (this.evaluateMove(candidates[i].r, candidates[i].c, color) >= 1000000) {
+                                                                                return [candidates[i]];
+                                                                        }
+                                                                }
+                                                                for (let i = 0; i < candidates.length; i++) {
+                                                                        if (this.evaluateMove(candidates[i].r, candidates[i].c, opp) >= 1000000) {
+                                                                                return [candidates[i]];
+                                                                        }
+                                                                }
+                                                                for (let i = 0; i < candidates.length; i++) {
+                                                                        if (this.evaluateMove(candidates[i].r, candidates[i].c, color) >= 100000) {
+                                                                                return [candidates[i]];
+                                                                        }
+                                                                }
+                                                                for (let i = 0; i < candidates.length; i++) {
+                                                                        if (this.evaluateMove(candidates[i].r, candidates[i].c, opp) >= 100000) {
+                                                                                return [candidates[i]];
+                                                                        }
+                                                                }
+                                                                for (let i = 0; i < candidates.length; i++) {
+                                                                        if (this.evaluateMove(candidates[i].r, candidates[i].c, opp) >= 10000) {
+                                                                                return [candidates[i]];
+                                                                        }
+                                                                }
+                                                                let results = [];
+                                                                let alpha = -Infinity;
+                                                                let beta = Infinity;
+
+                                                                candidates = this.sortCandidatesWithHeuristics(candidates, depth);
+
+                                                                for (let move of candidates) {
+                                                                        this.board[move.r][move.c] = color;
+                                                                        let score = this.minimax(depth - 1, alpha, beta, false, move.r, move.c, width, color);
+                                                                        this.board[move.r][move.c] = EMPTY;
+                                                                        results.push({ r: move.r, c: move.c, score: score });
+                                                                        alpha = Math.max(alpha, score);
+                                                                }
+                                                                results.sort((a, b) => b.score - a.score);
+                                                                return results.slice(0, 3);
+                                                        }
+                                                        return candidates.slice(0, 3);
+                                                }
+                                        }
+
+                                        self.onmessage = function(e) {
+                                                const { type, board, color, diff, depth, width } = e.data;
+                                                const ai = new AI(board);
+
+                                                if (type === 'analyze') {
+                                                        const results = ai.aiMoveEngine(depth, width, color);
+                                                        self.postMessage({ type: 'analyze_result', results });
+                                                } else if (type === 'move') {
+                                                        let best;
+                                                        if (diff === "简单") best = ai.aiMoveEasy(color);
+                                                        else if (diff === "中等") best = ai.aiMoveMedium(0.8, color);
+                                                        else if (diff === "困难") best = ai.aiMoveMedium(0.9, color);
+                                                        else {
+                                                                best = ai.aiMoveEngine(depth, width, color);
+                                                                if (best.length > 0) best = [best[0].r, best[0].c];
+                                                        }
+                                                        self.postMessage({ type: 'move_result', best });
+                                                }
+                                        }
+                                `;
+
+        let aiWorkerBlob = null;
+        let aiWorker = null;
+        let aiWorkerUrl = null;
+
+        function getAIWorker() {
+            if (!aiWorkerBlob) {
+                aiWorkerBlob = new Blob([aiWorkerScript], { type: "application/javascript" });
+            }
+            if (!aiWorkerUrl) {
+                aiWorkerUrl = URL.createObjectURL(aiWorkerBlob);
+            }
+            if (!aiWorker) {
+                aiWorker = new Worker(aiWorkerUrl);
+
+                aiWorker.onmessage = function (e) {
+                    if (e.data.type === "analyze_result") {
+                        game.aiAnalyzing = false;
+                        const results = e.data.results;
+                        game.aiHints = [];
+                        const labels = ["S", "A", "B"];
+                        for (let i = 0; i < results.length; i++) {
+                            if (results[i]) {
+                                game.aiHints.push({
+                                    r: results[i].r,
+                                    c: results[i].c,
+                                    label: labels[i],
+                                });
+                            }
+                        }
+                        drawBoard();
+                        renderPanels();
+                    } else if (e.data.type === "move_result") {
+                        const best = e.data.best;
+                        if (best) game.placePiece(best[0], best[1]);
+                        game.aiThinking = false;
+                        drawBoard();
+                        renderPanels();
+                    }
+                };
+            }
+            return aiWorker;
+        }
+
+        window.stopAIAnalysis = function () {
+            if (aiWorker) {
+                aiWorker.terminate();
+                aiWorker = null;
+            }
+            game.aiAnalyzing = false;
+            game.aiThinking = false;
+            game.aiHints = null;
+        };
+
+        window.startAIAnalysis = function () {
+            if (game.aiThinking || game.winner !== WINNER_NONE || game.reviewMode || game.aiAnalyzing) return;
+
+            window.stopAIAnalysis();
+
+            const worker = getAIWorker();
+            game.aiAnalyzing = true;
+            renderPanels();
+
+            // 引擎最高级别深度8，分支15
+            worker.postMessage({
+                type: "analyze",
+                board: JSON.parse(JSON.stringify(game.board)),
+                color: game.turn,
+                depth: 7,
+                width: 14,
+            });
+        };
+
+        function aiTurn() {
+            if (game.isUndoing || game.reviewMode || game.winner !== WINNER_NONE || game.aiThinking || game.aiAnalyzing) return;
+
+            let isAiTurn = false;
+            let currentDiff = game.difficulty;
+            let aiColor = PLAYER_WHITE;
+
+            if (game.mode === "pve" && game.turn === PLAYER_WHITE) {
+                isAiTurn = true;
+                currentDiff = game.difficulty;
+                aiColor = PLAYER_WHITE;
+            } else if (game.mode === "eve") {
+                if (!game.engineAutoPlay && !game.engineForceNext) return; // 等待开始或手动下一步
+                isAiTurn = true;
+                currentDiff = game.turn === PLAYER_BLACK ? game.engine1Diff : game.engine2Diff;
+                aiColor = game.turn;
+            }
+
+            if (!isAiTurn) return;
+
+            game.aiThinking = true;
+            game.engineForceNext = false; // 重置强制下一步标记
+
+            // 强制渲染 UI，让玩家看到思考状态
+            const statusNode = document.querySelector(".status-area");
+            if (statusNode) statusNode.innerHTML = "&#129300; AI 思考中...";
+
+            // 清理之前的标注
+            if (game.aiHints) {
+                game.aiHints = null;
+                drawBoard();
+            }
+
+            setTimeout(
+                () => {
+                    const worker = getAIWorker();
+
+                    let depth = 5,
+                        width = 10;
+                    if (currentDiff === "引擎低") {
+                        depth = 3;
+                        width = 6;
+                    } else if (currentDiff === "引擎中") {
+                        depth = 5;
+                        width = 10;
+                    } else if (currentDiff === "引擎高") {
+                        depth = 7;
+                        width = 14;
+                    }
+
+                    worker.postMessage({
+                        type: "move",
+                        board: JSON.parse(JSON.stringify(game.board)),
+                        color: aiColor,
+                        diff: currentDiff,
+                        depth: depth,
+                        width: width,
+                    });
+                },
+                game.mode === "eve" ? game.engineInterval : 50,
+            );
+        }
+
+        document.body.style.backgroundColor = `rgb(${bodyBgColor[0]},${bodyBgColor[1]},${bodyBgColor[2]})`;
+        renderPanels();
+        loop();
+    })();
+</script>
+</body>
+</html>

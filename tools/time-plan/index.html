@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>时间规划局 | Time Planning Bureau</title>
+    <link id="favicon" rel="icon" href="./favicon.ico">
+    <style>
+        :root {
+            --bg-color: #0f172a; --text-main: #f8fafc; --text-sec: #94a3b8;
+            --accent: #38bdf8; --accent-hover: #0284c7;
+            --card-bg: rgba(30, 41, 59, 0.6); --card-border: rgba(255, 255, 255, 0.1);
+            --ring-bg: rgba(255, 255, 255, 0.1); --panel-bg: rgba(15, 23, 42, 0.8);
+            --font-num: 'Courier New', 'Consolas', monospace;
+        }
+        [data-theme="light"] {
+            --bg-color: #f1f5f9; --text-main: #0f172a; --text-sec: #64748b;
+            --accent: #0ea5e9; --accent-hover: #0284c7;
+            --card-bg: rgba(255, 255, 255, 0.7); --card-border: rgba(0, 0, 0, 0.1);
+            --ring-bg: rgba(0, 0, 0, 0.1); --panel-bg: rgba(241, 245, 249, 0.9);
+        }
+        [data-theme="blue"] {
+            --bg-color: #081229; --text-main: #e0f2fe; --text-sec: #7dd3fc;
+            --accent: #0284c7; --accent-hover: #0369a1;
+            --card-bg: rgba(14, 30, 64, 0.6); --card-border: rgba(56, 189, 248, 0.3);
+            --ring-bg: rgba(56, 189, 248, 0.1); --panel-bg: rgba(8, 18, 41, 0.8);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; transition: background-color 0.3s, color 0.3s; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-main); min-height: 100vh; background-size: cover; background-position: center; background-attachment: fixed; background-image: url('./bj.jfif'); }
+
+        /* 布局与毛玻璃基础 */
+        #app { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .glass-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 24px; backdrop-filter: blur(16px); box-shadow: 0 8px 32px rgba(0,0,0,0.1); margin-bottom: 25px; }
+        .layer-title { font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid var(--card-border); padding-bottom: 10px; margin-bottom: 20px; color: var(--accent); }
+
+        /* 顶部与控制栏 */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .logo { font-size: 1.5rem; font-weight: bold; letter-spacing: 2px; }
+        .controls button, .controls label { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; margin-left: 10px; }
+        .controls button:hover, .controls label:hover { border-color: var(--accent); color: var(--accent); }
+        input[type="file"] { display: none; }
+
+        /* 🧭 第一层：感知层（仪表盘） */
+        .layer-1 { text-align: center; display: flex; flex-direction: column; align-items: center; }
+        .dash-row-top { display: flex; justify-content: space-between; width: 100%; color: var(--text-sec); font-size: 1.1rem; margin-bottom: 10px; }
+        .time-display { font-family: var(--font-num); font-size: 6rem; font-weight: 300; letter-spacing: 5px; text-shadow: 0 0 20px rgba(56,189,248,0.2); line-height: 1; margin-bottom: 20px; }
+        .dash-row-bottom { display: flex; justify-content: space-between; width: 100%; gap: 30px; }
+        .dash-metric { flex: 1; background: var(--panel-bg); padding: 15px; border-radius: 12px; border: 1px solid var(--card-border); }
+        .dash-metric span { display: block; font-size: 0.9rem; color: var(--text-sec); margin-bottom: 5px; }
+        .dash-metric strong { font-family: var(--font-num); font-size: 1.5rem; color: var(--accent); }
+
+        /* ⚙️ 第二层：功能层（Tab分类） */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { background: transparent; border: 1px solid var(--card-border); color: var(--text-main); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; }
+        .tab-btn.active { background: var(--accent); border-color: var(--accent); font-weight: bold; }
+        .tab-content { display: none; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .tab-content.active { display: grid; }
+        .tool-box { background: var(--panel-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--card-border); }
+        .tool-box h3 { font-size: 1.1rem; margin-bottom: 15px; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; }
+
+        /* 表单与交互元素 */
+        input[type="number"], input[type="text"], input[type="date"], input[type="time"], select { background: transparent; border: 1px solid var(--card-border); color: var(--text-main); padding: 8px; border-radius: 6px; font-family: var(--font-num); width: 100%; margin-bottom: 10px; }
+        .btn { background: var(--card-border); color: var(--text-main); border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn:hover { opacity: 0.8; }
+        .result-text { font-family: var(--font-num); font-size: 1.2rem; color: var(--accent); margin-top: 10px; display: block; }
+        .checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--text-sec); margin-bottom: 10px; cursor: pointer; }
+
+        /* 大数字显示（番茄钟/秒表） */
+        .big-timer { font-family: var(--font-num); font-size: 3.5rem; text-align: center; margin: 15px 0; color: var(--text-main); }
+
+        /* 世界时钟列表 */
+        .wc-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--card-border); }
+        .wc-item:last-child { border-bottom: none; }
+        .wc-info { display: flex; flex-direction: column; }
+        .wc-time { font-family: var(--font-num); font-size: 1.2rem; color: var(--accent); }
+        .wc-badges { font-size: 0.7rem; background: var(--card-bg); padding: 2px 6px; border-radius: 4px; color: var(--text-sec); margin-top: 4px;}
+
+        /* 📊 第三层：分析层 */
+        .layer-3 { display: grid; grid-template-columns: 1fr 2fr; gap: 25px; }
+
+        /* 环形图 */
+        .ring-container { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .ring { width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(var(--accent) 0%, var(--ring-bg) 0%); display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 15px;}
+        .ring::before { content: ""; width: 120px; height: 120px; background: var(--panel-bg); border-radius: 50%; position: absolute; }
+        .ring-val { position: relative; z-index: 1; text-align: center; }
+        .ring-val strong { font-family: var(--font-num); font-size: 1.8rem; display: block; }
+        .ring-val span { font-size: 0.8rem; color: var(--text-sec); }
+
+        /* 柱状图 */
+        .chart-container { height: 180px; display: flex; align-items: flex-end; justify-content: space-around; padding-top: 20px; border-bottom: 1px solid var(--card-border); margin-bottom: 15px; }
+        .bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 10%; height: 100%; justify-content: flex-end; }
+        .bar { width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; transition: height 0.5s; min-height: 2px; position: relative; }
+        .bar-val { position: absolute; top: -20px; font-size: 0.8rem; font-family: var(--font-num); color: var(--text-sec); width: 100%; text-align: center; }
+        .bar-label { margin-top: 10px; font-size: 0.9rem; color: var(--text-sec); }
+        .stats-summary { display: flex; justify-content: space-around; text-align: center; }
+        .stats-summary div { display: flex; flex-direction: column; }
+        .stats-summary strong { font-family: var(--font-num); font-size: 1.5rem; color: var(--accent); }
+
+        /* 特殊模式 */
+        body.minimal-mode header .controls *:not(#btn-minimal),
+        body.minimal-mode .layer-2, body.minimal-mode .layer-3,
+        body.minimal-mode .dash-row-bottom { display: none !important; }
+        body.minimal-mode .layer-1 { height: 80vh; justify-content: center; background: transparent; border: none; box-shadow: none; }
+
+        body.focus-mode { background-image: none !important; background-color: #000 !important; }
+        body.focus-mode header, body.focus-mode .layer-1, body.focus-mode .layer-3,
+        body.focus-mode .tabs, body.focus-mode .tab-content.active .tool-box:not(#box-pomo) { display: none !important; }
+        body.focus-mode #app { display: flex; align-items: center; justify-content: center; height: 100vh; }
+        body.focus-mode #box-pomo { width: 600px; transform: scale(1.5); background: transparent; border: none; }
+        body.focus-mode .big-timer { font-size: 6rem; text-shadow: 0 0 30px var(--accent); }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- 顶部操作栏 -->
+    <header>
+        <div class="logo">⏳ 时间规划局</div>
+        <div class="controls">
+            <button onclick="App.UI.toggleTheme()" id="btn-theme">🌓 主题</button>
+            <label for="bg-upload">🖼 壁纸</label><input type="file" id="bg-upload" accept="image/*">
+            <label for="icon-upload">🌟 图标</label><input type="file" id="icon-upload" accept="image/*">
+            <button onclick="App.UI.toggleMinimal()" id="btn-minimal">🖥 极简屏保</button>
+        </div>
+    </header>
+
+    <!-- 🧭 第一层：感知层 -->
+    <div class="glass-card layer-1">
+        <div class="dash-row-top">
+            <span id="l1-date">--年--月--日 星期-</span>
+            <span id="l1-tz">当前时区: GMT+8</span>
+        </div>
+        <div class="time-display" id="l1-time">00:00:00</div>
+        <div class="dash-row-bottom">
+            <div class="dash-metric">
+                <span>今日剩余</span>
+                <strong id="l1-rem-day">00时 00分</strong>
+            </div>
+            <div class="dash-metric">
+                <span>本周剩余</span>
+                <strong id="l1-rem-week">00天 00时</strong>
+            </div>
+            <div class="dash-metric">
+                <span>本年剩余</span>
+                <strong id="l1-rem-year">000 天</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⚙️ 第二层：操作层 -->
+    <div class="glass-card layer-2">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="App.UI.switchTab(0)">⏳ 计时器</button>
+            <button class="tab-btn" onclick="App.UI.switchTab(1)">🧮 维度计算</button>
+            <button class="tab-btn" onclick="App.UI.switchTab(2)">🌍 时区观测</button>
+        </div>
+
+        <!-- 标签1：计时器 -->
+        <div class="tab-content active" id="tab-0">
+            <!-- 番茄钟 -->
+            <div class="tool-box" id="box-pomo">
+                <h3>🍅 专业番茄钟
+                    <div>
+                        <button class="btn" onclick="App.UI.toggleFocus()">🎯 沉浸</button>
+                        <button class="btn" onclick="App.Timer.pomo.toggleSettings()">⚙️</button>
+                    </div>
+                </h3>
+                <div id="pomo-settings" style="display:none; margin-bottom:15px;">
+                    <div style="display:flex; gap:10px;">
+                        <div>专注(分)<input type="number" id="pomo-w" value="25"></div>
+                        <div>休息(分)<input type="number" id="pomo-b" value="5"></div>
+                    </div>
+                    <label class="checkbox-label"><input type="checkbox" id="pomo-auto"> 自动连续模式</label>
+                    <label class="checkbox-label"><input type="checkbox" id="pomo-snd" checked> 开启提示音效</label>
+                </div>
+                <div class="big-timer" id="pomo-display">25:00</div>
+                <div style="text-align:center; color:var(--text-sec); margin-bottom:10px;" id="pomo-status">状态：准备专注</div>
+                <div style="display:flex; justify-content:center; gap:10px;">
+                    <button class="btn btn-primary" id="btn-pomo-start" onclick="App.Timer.pomo.start()">开始</button>
+                    <button class="btn" onclick="App.Timer.pomo.reset()">重置</button>
+                </div>
+            </div>
+
+            <!-- 秒表与倒计时集合 -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+                <!-- 高级倒计时 -->
+                <div class="tool-box">
+                    <h3>⏳ 事件倒计时</h3>
+                    <input type="date" id="cd-date">
+                    <input type="time" id="cd-time" value="00:00">
+                    <div style="display:flex; gap:10px; margin-bottom: 10px;">
+                        <label class="checkbox-label" title="需外部接口支持，目前以公历推算演示"><input type="checkbox" id="cd-lunar"> 农历</label>
+                        <label class="checkbox-label"><input type="checkbox" id="cd-repeat"> 每年重复</label>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-primary" onclick="App.Timer.countdown.calc()">计算剩余</button>
+                        <span class="result-text" id="cd-result" style="font-size:1rem; margin-top:5px;">--</span>
+                    </div>
+                </div>
+                <!-- 秒表 -->
+                <div class="tool-box">
+                    <h3>⏱ 极速秒表</h3>
+                    <div class="big-timer" id="sw-display" style="font-size:2.5rem; margin:5px 0;">00:00.00</div>
+                    <div style="display:flex; justify-content:center; gap:10px;">
+                        <button class="btn btn-primary" id="btn-sw" onclick="App.Timer.stopwatch.toggle()">启动</button>
+                        <button class="btn" onclick="App.Timer.stopwatch.reset()">复位</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 标签2：维度计算 -->
+        <div class="tab-content" id="tab-1">
+            <div class="tool-box">
+                <h3>📅 时间差与年龄计算</h3>
+                <div>起始日期: <input type="date" id="calc-d1"></div>
+                <div>结束日期: <input type="date" id="calc-d2"></div>
+                <button class="btn btn-primary" onclick="App.Tools.calcDiff()">分析间隔</button>
+                <div class="result-text" id="calc-diff-res">共 -- 天</div>
+            </div>
+            <div class="tool-box">
+                <h3>⏱ Unix 时间戳转换</h3>
+                <div style="margin-bottom: 15px;">
+                    <div style="color:var(--text-sec); margin-bottom:5px;">当前实时时间戳(秒):</div>
+                    <div class="result-text" id="live-unix">0000000000</div>
+                </div>
+                <div>时间戳解析: <input type="number" id="unix-input" placeholder="输入10位或13位数字"></div>
+                <button class="btn btn-primary" onclick="App.Tools.parseUnix()">转换时间</button>
+                <div class="result-text" id="unix-res" style="font-size:1rem;">--</div>
+            </div>
+        </div>
+
+        <!-- 标签3：时区观测 -->
+        <div class="tab-content" id="tab-2">
+            <div class="tool-box" style="grid-column: span 2;">
+                <h3>🌍 全球时钟观测阵列 (含夏令时判定)</h3>
+                <div id="world-clock-list" style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                    <!-- JS动态填充 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📊 第三层：分析层 -->
+    <div class="glass-card layer-3">
+        <!-- 今日时间利用率 -->
+        <div class="tool-box">
+            <div class="layer-title" style="border:none; margin-bottom:0;">📊 今日时间利用率</div>
+            <p style="text-align:center; color:var(--text-sec); font-size:0.8rem; margin-bottom:15px;">(基于24小时制)</p>
+            <div class="ring-container">
+                <div class="ring" id="l3-ring">
+                    <div class="ring-val">
+                        <strong id="l3-ring-pct">0%</strong>
+                        <span>今日已用</span>
+                    </div>
+                </div>
+                <div style="text-align:center; font-family:var(--font-num); color:var(--text-sec);">
+                    剩余: <span id="l3-ring-rem" style="color:var(--accent);">0.0</span> 小时
+                </div>
+            </div>
+        </div>
+
+        <!-- 专注统计趋势图 -->
+        <div class="tool-box">
+            <div class="layer-title" style="border:none; margin-bottom:0; display:flex; justify-content:space-between;">
+                📈 专注统计趋势 (分钟)
+                <button class="btn" style="padding:2px 8px; font-size:0.8rem;" onclick="App.Store.clearStats()">清空</button>
+            </div>
+            <div class="chart-container" id="chart-week">
+                <!-- JS动态生成7根柱子 -->
+            </div>
+            <div class="stats-summary">
+                <div><span>今日专注</span><strong id="stat-today">0</strong></div>
+                <div><span>本周累计</span><strong id="stat-week">0</strong></div>
+                <div><span>本月总计</span><strong id="stat-month">0</strong></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    /**
+     * 时间规划局 核心引擎 (Time Planning Bureau OS)
+     */
+    const App = (function() {
+
+        // --- 状态与存储模块 (含版本控制) ---
+        const Store = {
+            state: { version: '2.0', theme: 'dark', history: {} }, // history: { 'YYYY-MM-DD': focusMinutes }
+            init() {
+                let s = localStorage.getItem('tpb_v2');
+                if(s) { this.state = JSON.parse(s); }
+                else { this.save(); }
+            },
+            save() { localStorage.setItem('tpb_v2', JSON.stringify(this.state)); },
+            addFocus(mins) {
+                const today = new Date().toISOString().split('T')[0];
+                this.state.history[today] = (this.state.history[today] || 0) + mins;
+                this.save();
+                UI.renderChart();
+            },
+            clearStats() {
+                if(confirm("确定清空所有专注记录？")) {
+                    this.state.history = {};
+                    this.save();
+                    UI.renderChart();
+                }
+            }
+        };
+
+        // --- UI 控制模块 ---
+        const UI = {
+            themes:['dark', 'light', 'blue'],
+            init() {
+                document.documentElement.setAttribute('data-theme', Store.state.theme);
+                document.getElementById('l1-tz').innerText = `当前时区: ${Intl.DateTimeFormat().resolvedOptions().timeZone} (${this.getGmtOffset(new Date())})`;
+                this.renderChart();
+
+                // 绑定图片上传
+                document.getElementById('bg-upload').addEventListener('change', e => this.handleImage(e, b64 => document.body.style.backgroundImage = `url(${b64})`));
+                document.getElementById('icon-upload').addEventListener('change', e => this.handleImage(e, b64 => document.getElementById('favicon').href = b64));
+            },
+            toggleTheme() {
+                let idx = this.themes.indexOf(Store.state.theme);
+                Store.state.theme = this.themes[(idx + 1) % this.themes.length];
+                document.documentElement.setAttribute('data-theme', Store.state.theme);
+                Store.save();
+            },
+            toggleMinimal() {
+                document.body.classList.toggle('minimal-mode');
+                document.getElementById('btn-minimal').innerText = document.body.classList.contains('minimal-mode') ? '退出屏保' : '🖥 极简屏保';
+            },
+            toggleFocus() {
+                document.body.classList.toggle('focus-mode');
+            },
+            switchTab(idx) {
+                document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+                document.querySelectorAll('.tab-content').forEach((c, i) => c.classList.toggle('active', i === idx));
+            },
+            handleImage(e, cb) {
+                const file = e.target.files[0];
+                if(!file) return;
+                const r = new FileReader();
+                r.onload = evt => cb(evt.target.result);
+                r.readAsDataURL(file);
+            },
+            getGmtOffset(date, tz) {
+                const opts = tz ? {timeZone: tz, timeZoneName: 'short'} : {timeZoneName: 'short'};
+                const parts = new Intl.DateTimeFormat('en-US', opts).formatToParts(date);
+                const tzName = parts.find(p => p.type === 'timeZoneName').value;
+                return tzName.startsWith('GMT') ? tzName : `UTC${date.getTimezoneOffset() < 0 ? '+' : '-'}${Math.abs(date.getTimezoneOffset()/60)}`; // 简易降级
+            },
+            renderChart() {
+                // 生成本周图表 (周一到周日)
+                const today = new Date();
+                const dayOfWeek = today.getDay() === 0 ? 6 : today.getDay() - 1;
+                const weekData =[];
+                let weekTotal = 0; let monthTotal = 0;
+
+                // 统计本月
+                const currentMonth = today.toISOString().slice(0, 7);
+                for(let key in Store.state.history) {
+                    if(key.startsWith(currentMonth)) monthTotal += Store.state.history[key];
+                }
+
+                // 统计本周每日
+                for(let i=0; i<7; i++) {
+                    let d = new Date(today);
+                    d.setDate(today.getDate() - dayOfWeek + i);
+                    let dateStr = d.toISOString().split('T')[0];
+                    let val = Store.state.history[dateStr] || 0;
+                    weekData.push(val);
+                    weekTotal += val;
+                }
+
+                // 渲染柱状图
+                const maxVal = Math.max(...weekData, 30); // 至少30分钟高度基准
+                const days =['一', '二', '三', '四', '五', '六', '日'];
+                const container = document.getElementById('chart-week');
+                container.innerHTML = '';
+                weekData.forEach((val, i) => {
+                    let h = (val / maxVal) * 100;
+                    let isToday = i === dayOfWeek ? 'color:var(--text-main); font-weight:bold;' : '';
+                    container.innerHTML += `
+                    <div class="bar-wrapper">
+                        <div class="bar" style="height: ${h}%; background: ${i === dayOfWeek ? 'var(--accent)' : 'var(--card-border)'};">
+                            <span class="bar-val">${val>0?val:''}</span>
+                        </div>
+                        <span class="bar-label" style="${isToday}">${days[i]}</span>
+                    </div>`;
+                });
+
+                document.getElementById('stat-today').innerText = Store.state.history[today.toISOString().split('T')[0]] || 0;
+                document.getElementById('stat-week').innerText = weekTotal;
+                document.getElementById('stat-month').innerText = monthTotal;
+            }
+        };
+
+        // --- 计时器与核心计算模块 (包含层级级更新) ---
+        const Timer = {
+            lastSec: -1,
+            worldClocks:[
+                { id: 'NY', name: '🗽 纽约', tz: 'America/New_York' },
+                { id: 'LD', name: '🇬🇧 伦敦', tz: 'Europe/London' },
+                { id: 'TK', name: '🗼 东京', tz: 'Asia/Tokyo' },
+                { id: 'SY', name: '🦘 悉尼', tz: 'Australia/Sydney' }
+            ],
+            // 音效引擎 (Web Audio API 替代外部文件)
+            beep() {
+                if(!document.getElementById('pomo-snd').checked) return;
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
+                    osc.connect(ctx.destination);
+                    osc.start(); osc.stop(ctx.currentTime + 0.3);
+                } catch(e) {}
+            },
+
+            // 番茄钟逻辑
+            pomo: {
+                state: 'idle', // idle, work, break
+                rem: 25 * 60, interval: null,
+                toggleSettings() {
+                    const s = document.getElementById('pomo-settings');
+                    s.style.display = s.style.display === 'none' ? 'block' : 'none';
+                },
+                updateDisplay() {
+                    let m = Math.floor(this.rem / 60).toString().padStart(2, '0');
+                    let s = (this.rem % 60).toString().padStart(2, '0');
+                    document.getElementById('pomo-display').innerText = `${m}:${s}`;
+                },
+                start() {
+                    const btn = document.getElementById('btn-pomo-start');
+                    if(this.interval) {
+                        clearInterval(this.interval); this.interval = null;
+                        btn.innerText = "继续"; btn.style.background = "var(--accent)";
+                        return;
+                    }
+                    if(this.state === 'idle') {
+                        this.state = 'work';
+                        this.rem = parseInt(document.getElementById('pomo-w').value) * 60;
+                    }
+                    btn.innerText = "⏸ 暂停"; btn.style.background = "#f59e0b";
+                    document.getElementById('pomo-status').innerText = this.state === 'work' ? '🔥 专注中...' : '☕ 休息中...';
+
+                    this.interval = setInterval(() => {
+                        this.rem--;
+                        this.updateDisplay();
+                        if(this.rem <= 0) this.complete();
+                    }, 1000);
+                },
+                reset() {
+                    clearInterval(this.interval); this.interval = null;
+                    this.state = 'idle';
+                    this.rem = parseInt(document.getElementById('pomo-w').value) * 60;
+                    document.getElementById('pomo-status').innerText = '状态：准备专注';
+                    document.getElementById('btn-pomo-start').innerText = "开始";
+                    document.getElementById('btn-pomo-start').style.background = "var(--accent)";
+                    this.updateDisplay();
+                },
+                complete() {
+                    clearInterval(this.interval); this.interval = null;
+                    Timer.beep();
+                    if(this.state === 'work') {
+                        Store.addFocus(parseInt(document.getElementById('pomo-w').value));
+                        this.state = 'break';
+                        this.rem = parseInt(document.getElementById('pomo-b').value) * 60;
+                        alert("🎉 专注完成！已计入统计。开始休息吧！");
+                    } else {
+                        this.state = 'work';
+                        this.rem = parseInt(document.getElementById('pomo-w').value) * 60;
+                        alert("☕ 休息结束！准备下一轮专注。");
+                    }
+
+                    if(document.getElementById('pomo-auto').checked) {
+                        this.start();
+                    } else {
+                        document.getElementById('pomo-status').innerText = this.state === 'work' ? '准备专注' : '准备休息';
+                        document.getElementById('btn-pomo-start').innerText = "开始";
+                        document.getElementById('btn-pomo-start').style.background = "var(--accent)";
+                        this.updateDisplay();
+                    }
+                }
+            },
+
+            // 秒表逻辑
+            stopwatch: {
+                time: 0, interval: null, startTime: 0,
+                toggle() {
+                    const btn = document.getElementById('btn-sw');
+                    if(this.interval) {
+                        clearInterval(this.interval); this.interval = null;
+                        btn.innerText = "继续"; btn.style.background = "var(--accent)";
+                    } else {
+                        this.startTime = Date.now() - this.time;
+                        btn.innerText = "⏸ 暂停"; btn.style.background = "#f59e0b";
+                        this.interval = setInterval(() => {
+                            this.time = Date.now() - this.startTime;
+                            let m = Math.floor(this.time / 60000).toString().padStart(2, '0');
+                            let s = Math.floor((this.time % 60000) / 1000).toString().padStart(2, '0');
+                            let ms = Math.floor((this.time % 1000) / 10).toString().padStart(2, '0');
+                            document.getElementById('sw-display').innerText = `${m}:${s}.${ms}`;
+                        }, 10);
+                    }
+                },
+                reset() {
+                    clearInterval(this.interval); this.interval = null;
+                    this.time = 0;
+                    document.getElementById('sw-display').innerText = "00:00.00";
+                    const btn = document.getElementById('btn-sw');
+                    btn.innerText = "启动"; btn.style.background = "var(--accent)";
+                }
+            },
+
+            // 倒计时逻辑
+            countdown: {
+                calc() {
+                    let dateStr = document.getElementById('cd-date').value;
+                    let timeStr = document.getElementById('cd-time').value;
+                    let isLunar = document.getElementById('cd-lunar').checked;
+                    let isRepeat = document.getElementById('cd-repeat').checked;
+                    if(!dateStr) return alert("请选择日期！");
+
+                    let target = new Date(`${dateStr}T${timeStr}`);
+                    let now = new Date();
+
+                    if(isLunar) alert("⚠️ 提示：标准农历算法需调用外部接口库，单文件版按您选择的公历日期进行等距推算。");
+
+                    if(isRepeat && target < now) {
+                        target.setFullYear(now.getFullYear());
+                        if(target < now) target.setFullYear(now.getFullYear() + 1);
+                    }
+
+                    let diff = target - now;
+                    if(diff < 0) { document.getElementById('cd-result').innerText = "事件已过期！"; return; }
+
+                    let d = Math.floor(diff / 86400000);
+                    let h = Math.floor((diff % 86400000) / 3600000);
+                    let m = Math.floor((diff % 3600000) / 60000);
+                    document.getElementById('cd-result').innerText = `剩余: ${d}天 ${h}小时 ${m}分钟`;
+                }
+            },
+
+            // 主循环
+            loop() {
+                const now = new Date();
+                const sec = now.getSeconds();
+
+                // 每秒执行一次 DOM 更新以节省性能
+                if (sec !== Timer.lastSec) {
+                    Timer.lastSec = sec;
+
+                    // L1: 时间状态更新
+                    document.getElementById('l1-time').innerText = now.toLocaleTimeString('zh-CN', { hour12: false });
+                    document.getElementById('l1-date').innerText = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+
+                    // 剩余计算
+                    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    const endOfDay = new Date(startOfDay.getTime() + 86400000 - 1);
+                    const dayRemMins = Math.floor((endOfDay - now) / 60000);
+                    document.getElementById('l1-rem-day').innerText = `${Math.floor(dayRemMins/60)}时 ${dayRemMins%60}分`;
+
+                    const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+                    const endOfWeek = new Date(startOfDay.getTime() + (7 - dayOfWeek) * 86400000 + 86400000 - 1);
+                    const weekRemHours = Math.floor((endOfWeek - now) / 3600000);
+                    document.getElementById('l1-rem-week').innerText = `${Math.floor(weekRemHours/24)}天 ${weekRemHours%24}时`;
+
+                    const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+                    document.getElementById('l1-rem-year').innerText = `${Math.floor((endOfYear - now) / 86400000)} 天`;
+
+                    // L2: Unix实时与世界时钟
+                    document.getElementById('live-unix').innerText = Math.floor(now.getTime() / 1000);
+
+                    const wcHtml = Timer.worldClocks.map(c => {
+                        let localTime = new Date(now.toLocaleString('en-US', { timeZone: c.tz }));
+                        let h = localTime.getHours();
+                        let m = localTime.getMinutes().toString().padStart(2, '0');
+                        let icon = (h >= 6 && h < 18) ? '🌞 昼' : '🌙 夜';
+
+                        // 夏令时粗略判定: 比较当前偏移与1月份偏移
+                        let jan = new Date(now.getFullYear(), 0, 1);
+                        let janOffset = parseInt(jan.toLocaleString('en-US', {timeZone: c.tz, hour12: false, hour:'numeric'}));
+                        let curOffset = parseInt(localTime.toLocaleString('en-US', {hour12: false, hour:'numeric'}));
+                        let isDST = (curOffset !== janOffset) ? ' | ☀ 夏令时' : '';
+
+                        return `
+                    <div class="wc-item">
+                        <div class="wc-info">
+                            <span>${c.name}</span>
+                            <span class="wc-badges">${icon} | ${UI.getGmtOffset(now, c.tz)}${isDST}</span>
+                        </div>
+                        <div class="wc-time">${h.toString().padStart(2, '0')}:${m}</div>
+                    </div>`;
+                    }).join('');
+                    document.getElementById('world-clock-list').innerHTML = wcHtml;
+
+                    // L3: 圆环进度更新
+                    const dayPct = (((now - startOfDay) / 86400000) * 100).toFixed(1);
+                    document.getElementById('l3-ring-pct').innerText = dayPct + '%';
+                    document.getElementById('l3-ring-rem').innerText = (24 - (now - startOfDay)/3600000).toFixed(1);
+                    document.getElementById('l3-ring').style.background = `conic-gradient(var(--accent) ${dayPct}%, var(--ring-bg) ${dayPct}%)`;
+                }
+                requestAnimationFrame(Timer.loop);
+            }
+        };
+
+        // --- 静态工具模块 ---
+        const Tools = {
+            calcDiff() {
+                let d1 = new Date(document.getElementById('calc-d1').value);
+                let d2 = new Date(document.getElementById('calc-d2').value);
+                if(isNaN(d1) || isNaN(d2)) return alert("请输入完整日期");
+                let diffDays = Math.abs(d2 - d1) / 86400000;
+                let years = (diffDays / 365.25).toFixed(1);
+                document.getElementById('calc-diff-res').innerHTML = `相差: <strong>${diffDays}</strong> 天 <br><span style="font-size:0.9rem; color:var(--text-sec)">约 ${years} 年</span>`;
+            },
+            parseUnix() {
+                let val = document.getElementById('unix-input').value;
+                if(!val) return;
+                if(val.length === 10) val = val * 1000;
+                let d = new Date(parseInt(val));
+                document.getElementById('unix-res').innerText = isNaN(d) ? "无效时间戳" : d.toLocaleString('zh-CN');
+            }
+        };
+
+        // 对外暴露
+        return {
+            init: () => {
+                Store.init();
+                UI.init();
+                requestAnimationFrame(Timer.loop);
+            },
+            UI, Timer, Tools, Store
+        };
+    })();
+
+    // 启动系统
+    App.init();
+</script>
+</body>
+</html>

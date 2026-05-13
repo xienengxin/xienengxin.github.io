@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抽签</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Cormorant+Garamond:wght@300;500;700&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0}
+        :root{--ink:#1a1410;--paper:#f4ead5;--paper-dark:#e8dcc0;--red:#8b1a1a;--gold:#b8893f;--shadow:rgba(26,20,16,.25)}
+        body{font-family:'Noto Serif TC',serif;background:var(--paper);background-image:radial-gradient(ellipse at top left,rgba(184,137,63,.12),transparent 50%),radial-gradient(ellipse at bottom right,rgba(139,26,26,.08),transparent 50%);min-height:100vh;color:var(--ink);padding:20px 14px 40px}
+        .container{max-width:560px;margin:0 auto}
+        header{text-align:center;margin-bottom:24px;padding:16px 0;position:relative}
+        header::before,header::after{content:'';position:absolute;left:50%;transform:translateX(-50%);width:40px;height:2px;background:var(--ink)}
+        header::before{top:0}header::after{bottom:0}
+        .title-main{font-size:40px;font-weight:900;letter-spacing:14px;padding-left:14px;color:var(--red);line-height:1;margin-bottom:6px}
+        .title-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;letter-spacing:4px;color:var(--gold);text-transform:uppercase}
+        .setup-panel{background:#fff;border:1px solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:18px;margin-bottom:20px}
+        .setup-panel summary{font-weight:700;letter-spacing:4px;cursor:pointer;font-size:15px;padding:4px 0;user-select:none}
+        .setup-content{margin-top:14px}
+        .group-editor{border:1px dashed rgba(26,20,16,.3);padding:12px;margin-bottom:10px;background:rgba(244,234,213,.3)}
+        .group-editor-header{display:flex;gap:8px;margin-bottom:10px;align-items:center}
+        .group-editor input[type=text]{flex:1;padding:8px 10px;border:1px solid var(--ink);background:#fff;font-family:inherit;font-size:14px;letter-spacing:2px}
+        .group-editor textarea{width:100%;min-height:70px;padding:8px 10px;border:1px solid var(--ink);background:#fff;font-family:inherit;font-size:14px;letter-spacing:2px;resize:vertical;line-height:1.6}
+        .hint{font-size:11px;color:rgba(26,20,16,.6);margin-top:4px;letter-spacing:1px}
+        .btn-small{padding:6px 10px;background:var(--paper);border:1px solid var(--ink);font-family:inherit;font-size:12px;letter-spacing:2px;cursor:pointer}
+        .btn-small:hover{background:var(--ink);color:var(--paper)}
+        .btn-small.danger{color:var(--red)}
+        .btn-small.danger:hover{background:var(--red);color:var(--paper);border-color:var(--red)}
+        .setup-actions{display:flex;gap:8px;margin-top:12px}
+        .btn-primary{flex:1;padding:10px;background:var(--ink);color:var(--paper);border:none;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:4px;cursor:pointer}
+        .btn-primary:hover{background:var(--red)}
+        .draw-card{background:linear-gradient(135deg,#faf3e0 0%,#f4ead5 100%);border:1px solid var(--ink);box-shadow:4px 4px 0 var(--ink),8px 8px 24px var(--shadow);padding:24px 20px;margin-bottom:24px;position:relative}
+        .draw-card::before{content:'';position:absolute;inset:6px;border:1px solid rgba(26,20,16,.2);pointer-events:none}
+        .date-badge{display:inline-block;background:var(--ink);color:var(--paper);padding:6px 14px;font-size:13px;font-weight:700;letter-spacing:3px;margin-bottom:18px;font-family:'Cormorant Garamond',serif}
+        .candidates{display:flex;flex-direction:column;gap:9px;margin-bottom:18px}
+        .candidate{display:flex;align-items:center;gap:14px;padding:13px 16px;background:var(--paper);border:1px solid rgba(26,20,16,.3);transition:all .4s cubic-bezier(.4,0,.2,1);font-size:19px;font-weight:700;letter-spacing:3px;position:relative}
+        .candidate .num{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;color:var(--gold);letter-spacing:0;min-width:28px;font-style:italic}
+        .candidate.rolling{animation:shake .08s infinite;background:var(--paper-dark)}
+        .candidate.eliminated{opacity:.25;text-decoration:line-through;filter:grayscale(1)}
+        .candidate.winner{background:var(--red);color:var(--paper);border-color:var(--red);transform:scale(1.04);box-shadow:4px 4px 0 var(--ink)}
+        .candidate.winner .num{color:var(--gold)}
+        .candidate.winner::after{content:'◆';position:absolute;right:18px;color:var(--gold);font-size:16px}
+        @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+        .draw-btn{width:100%;padding:13px;background:var(--ink);color:var(--paper);border:none;font-family:inherit;font-size:16px;font-weight:700;letter-spacing:6px;padding-left:12px;cursor:pointer;transition:all .2s}
+        .draw-btn:hover:not(:disabled){background:var(--red);transform:translateY(-2px)}
+        .draw-btn:disabled{opacity:.4;cursor:not-allowed}
+        .draw-btn.done{background:var(--gold)}
+        .result-banner{text-align:center;margin-top:14px;padding:12px;border-top:1px dashed var(--ink);border-bottom:1px dashed var(--ink);opacity:0;transform:translateY(-10px);transition:all .5s ease-out}
+        .result-banner.show{opacity:1;transform:translateY(0)}
+        .result-banner .label{font-family:'Cormorant Garamond',serif;font-size:12px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;margin-bottom:4px}
+        .result-banner .name{font-size:26px;font-weight:900;letter-spacing:8px;padding-left:8px;color:var(--red)}
+        .record-bar{position:sticky;bottom:0;background:var(--ink);color:var(--paper);padding:12px 14px;margin:24px -14px -40px;box-shadow:0 -4px 16px var(--shadow);display:flex;gap:8px;align-items:center;flex-wrap:wrap;z-index:10}
+        .record-bar .status{flex:1;min-width:100%;font-size:12px;letter-spacing:2px;color:var(--gold);font-family:'Cormorant Garamond',serif;text-transform:uppercase;padding-bottom:4px}
+        .record-bar button{flex:1;padding:10px 8px;background:transparent;color:var(--paper);border:1px solid var(--paper);font-family:inherit;font-size:13px;letter-spacing:2px;cursor:pointer;min-width:0}
+        .record-bar button:hover:not(:disabled){background:var(--paper);color:var(--ink)}
+        .progress-overlay{position:fixed;inset:0;background:rgba(26,20,16,.9);display:none;align-items:center;justify-content:center;z-index:1000;color:var(--paper);text-align:center;padding:20px}
+        .progress-overlay.show{display:flex}
+        .progress-overlay .box{background:var(--ink);border:1px solid var(--gold);padding:32px 28px;max-width:360px;width:100%}
+        .progress-overlay h3{font-size:18px;letter-spacing:6px;padding-left:6px;margin-bottom:18px;color:var(--gold)}
+        .progress-overlay .bar{height:6px;background:rgba(244,234,213,.2);margin-bottom:14px;overflow:hidden}
+        .progress-overlay .bar>div{height:100%;background:var(--gold);width:0%;transition:width .15s}
+        .progress-overlay .msg{font-size:13px;letter-spacing:2px;opacity:.9;font-family:'Cormorant Garamond',serif}
+        .progress-overlay .sub{font-size:11px;opacity:.5;margin-top:10px;letter-spacing:1px}
+        .progress-overlay .err{color:#e8a3a3;font-size:13px;line-height:1.8;margin-top:10px;letter-spacing:1px;text-align:left}
+        .progress-overlay button{margin-top:16px;background:transparent;color:var(--paper);border:1px solid var(--paper);padding:8px 18px;font-family:inherit;font-size:12px;letter-spacing:2px;cursor:pointer}
+        footer{text-align:center;margin-top:20px;font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:3px;color:var(--ink);opacity:.5;text-transform:uppercase}
+        .reset-btn{background:none;border:1px solid var(--ink);color:var(--ink);padding:8px 16px;font-family:inherit;font-size:12px;letter-spacing:3px;cursor:pointer;margin-top:12px;transition:all .2s}
+        .reset-btn:hover{background:var(--ink);color:var(--paper)}
+        .env-notice{background:#fff5e6;border:1px solid var(--gold);padding:12px 14px;margin-bottom:16px;font-size:12px;line-height:1.7;letter-spacing:1px;color:var(--ink)}
+        .env-notice b{color:var(--red)}
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div class="title-main">抽 签</div>
+        <div class="title-sub">— Lottery Draw —</div>
+    </header>
+
+    <div class="env-notice" id="envNotice" style="display:none"></div>
+
+    <details class="setup-panel" id="setupPanel" open>
+        <summary>⚙ 设 定 名 单</summary>
+        <div class="setup-content">
+            <div id="groupsEditor"></div>
+            <button class="btn-small" onclick="addGroup()">+ 新 增 日 期</button>
+            <div class="setup-actions">
+                <button class="btn-primary" onclick="applySetup()">套 用 名 单</button>
+            </div>
+        </div>
+    </details>
+
+    <div id="drawArea"></div>
+
+    <div style="text-align:center">
+        <button class="reset-btn" onclick="resetAll()">重 新 抽 签</button>
+    </div>
+
+    <footer>Fair · Random · Final</footer>
+
+    <div class="record-bar">
+        <div class="status" id="recStatus">影片输出 · 直接生成 MP4（需桌面 Chrome/Edge 下载后开启）</div>
+        <button id="btnAuto" onclick="generateVideo()">🎬 生 成 M P 4 影 片</button>
+    </div>
+</div>
+
+<div class="progress-overlay" id="progressOverlay">
+    <div class="box">
+        <h3 id="progressTitle">制 作 中</h3>
+        <div class="bar"><div id="progressBar"></div></div>
+        <div class="msg" id="progressMsg">Preparing…</div>
+        <div class="sub" id="progressSub">请勿关闭或切换分页</div>
+        <button id="progressClose" style="display:none" onclick="hideProgress()">关 闭</button>
+    </div>
+</div>
+
+<script>
+    /* Environment hint */
+    (function(){
+        const inIframe = window !== window.top;
+        const hasWC = typeof VideoEncoder !== 'undefined';
+        if(inIframe || !hasWC){
+            const n = document.getElementById('envNotice');
+            n.style.display='block';
+            n.innerHTML = `<b>提示：</b>此頁目前${inIframe?'在沙盒 iframe':'瀏覽器不支援 WebCodecs'}，產生 MP4 會失敗。<br>請把此 HTML 檔<b>下載到電腦</b>，用<b>桌面版 Chrome / Edge</b>直接開啟即可。`;
+        }
+    })();
+
+    /* ============ Data + UI ============ */
+    let groups = [
+        { date:'日期一', names:['姓名一','姓名二','姓名三'] }
+    ];
+    const drawing = {};
+    const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+
+    function renderEditor(){
+        const box = document.getElementById('groupsEditor');
+        box.innerHTML='';
+        groups.forEach((g,i)=>{
+            const d=document.createElement('div');
+            d.className='group-editor';
+            d.innerHTML=`
+      <div class="group-editor-header">
+        <input type="text" value="${esc(g.date)}" placeholder="日期 / 标题" oninput="groups[${i}].date=this.value">
+        <button class="btn-small danger" onclick="removeGroup(${i})">刪除</button>
+      </div>
+      <textarea placeholder="每行一个名字" oninput="updateNames(${i},this.value)">${g.names.join('\n')}</textarea>
+      <div class="hint">每行一个名字，系统会从中随机抽一人</div>`;
+            box.appendChild(d);
+        });
+    }
+    function updateNames(i,t){groups[i].names=t.split('\n').map(s=>s.trim()).filter(Boolean)}
+    function addGroup(){groups.push({date:'新日期',names:['姓名一','姓名二']});renderEditor()}
+    function removeGroup(i){if(groups.length<=1){alert('至少保留一組');return}groups.splice(i,1);renderEditor()}
+    function applySetup(){
+        for(const g of groups)if(!g.names.length){alert(`「${g.date}」沒有名单`);return}
+        renderDrawCards();
+        document.getElementById('setupPanel').open=false;
+        window.scrollTo({top:document.getElementById('drawArea').offsetTop-20,behavior:'smooth'});
+    }
+    function renderDrawCards(){
+        const area=document.getElementById('drawArea');
+        area.innerHTML='';
+        groups.forEach((g,idx)=>{
+            const id=idx+1;drawing[id]=false;
+            const card=document.createElement('div');
+            card.className='draw-card';card.id='card'+id;
+            card.innerHTML=`
+      <div class="date-badge">${esc(g.date)}</div>
+      <div class="candidates" id="list${id}">
+        ${g.names.map((n,i)=>`<div class="candidate"><span class="num">${String(i+1).padStart(2,'0')}</span><span class="name">${esc(n)}</span></div>`).join('')}
+      </div>
+      <button class="draw-btn" onclick="draw(${id})">开 始 抽 签</button>
+      <div class="result-banner" id="result${id}"><div class="label">— 中 选 —</div><div class="name"></div></div>`;
+            area.appendChild(card);
+        });
+    }
+    function draw(id){
+        return new Promise(resolve=>{
+            if(drawing[id]){resolve();return}
+            drawing[id]=true;
+            const list=document.getElementById('list'+id);
+            const items=list.querySelectorAll('.candidate');
+            const btn=document.querySelector('#card'+id+' .draw-btn');
+            const banner=document.getElementById('result'+id);
+            items.forEach(el=>el.classList.remove('eliminated','winner','rolling'));
+            banner.classList.remove('show');
+            btn.disabled=true;btn.textContent='抽 签 中 . . .';
+            const wi=Math.floor(Math.random()*items.length);
+            let cur=0,ticks=0,delay=60;
+            const total=18+wi;
+            function tick(){
+                items.forEach(el=>el.classList.remove('rolling'));
+                items[cur%items.length].classList.add('rolling');
+                ticks++;
+                if(ticks>=total&&cur%items.length===wi){
+                    setTimeout(()=>{
+                        items.forEach(el=>el.classList.remove('rolling'));
+                        items.forEach((el,i)=>{if(i!==wi)el.classList.add('eliminated')});
+                        items[wi].classList.add('winner');
+                        const nm=items[wi].querySelector('.name').textContent;
+                        banner.querySelector('.name').textContent=nm;
+                        setTimeout(()=>banner.classList.add('show'),200);
+                        btn.textContent='已 完 成';btn.classList.add('done');
+                        drawing[id]=false;
+                        setTimeout(resolve,1200);
+                    },200);
+                    return;
+                }
+                cur++;if(ticks>12)delay+=30;
+                setTimeout(tick,delay);
+            }
+            tick();
+        });
+    }
+    function resetAll(){
+        groups.forEach((_,idx)=>{
+            const id=idx+1;
+            const list=document.getElementById('list'+id);if(!list)return;
+            list.querySelectorAll('.candidate').forEach(el=>el.classList.remove('eliminated','winner','rolling'));
+            const banner=document.getElementById('result'+id);if(banner)banner.classList.remove('show');
+            const btn=document.querySelector('#card'+id+' .draw-btn');
+            if(btn){btn.disabled=false;btn.textContent='开 始 抽 签';btn.classList.remove('done')}
+            drawing[id]=false;
+        });
+    }
+
+    /* ============ Progress ============ */
+    function showProgress(msg,pct){
+        const o=document.getElementById('progressOverlay');o.classList.add('show');
+        document.getElementById('progressTitle').textContent='制 作 中';
+        const m=document.getElementById('progressMsg');m.textContent=msg;m.className='msg';
+        document.getElementById('progressSub').style.display='';
+        document.getElementById('progressClose').style.display='none';
+        if(pct!==undefined)document.getElementById('progressBar').style.width=(pct*100).toFixed(1)+'%';
+    }
+    function hideProgress(){document.getElementById('progressOverlay').classList.remove('show')}
+    function showDone(title,msg){
+        const o=document.getElementById('progressOverlay');o.classList.add('show');
+        document.getElementById('progressTitle').textContent=title;
+        const m=document.getElementById('progressMsg');m.className='err';m.innerHTML=msg;
+        document.getElementById('progressSub').style.display='none';
+        document.getElementById('progressClose').style.display='';
+        document.getElementById('progressBar').style.width='100%';
+    }
+
+    /* ============ Canvas drawing ============ */
+    const V_W=720,V_H=1280,FPS=30;
+    function drawBG(ctx){
+        const g=ctx.createLinearGradient(0,0,V_W,V_H);g.addColorStop(0,'#f4ead5');g.addColorStop(1,'#e8dcc0');
+        ctx.fillStyle=g;ctx.fillRect(0,0,V_W,V_H);
+        const g1=ctx.createRadialGradient(0,0,0,0,0,600);g1.addColorStop(0,'rgba(184,137,63,.3)');g1.addColorStop(1,'rgba(184,137,63,0)');
+        ctx.fillStyle=g1;ctx.fillRect(0,0,V_W,V_H);
+        const g2=ctx.createRadialGradient(V_W,V_H,0,V_W,V_H,600);g2.addColorStop(0,'rgba(139,26,26,.18)');g2.addColorStop(1,'rgba(139,26,26,0)');
+        ctx.fillStyle=g2;ctx.fillRect(0,0,V_W,V_H);
+    }
+    function drawHeader(ctx){
+        // Top decorative line
+        ctx.fillStyle='#1a1410';
+        ctx.fillRect(V_W/2-40,70,80,2);
+        // Main title "抽 籤" — use tracked letters so the gap is controlled, not from spaces
+        ctx.fillStyle='#8b1a1a';
+        ctx.font='900 72px "Noto Serif TC", serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        dTTC(ctx,'抽签',V_W/2,130,36);
+        // Subtitle, clearly below the title
+        ctx.fillStyle='#b8893f';
+        ctx.font='italic 300 22px "Cormorant Garamond", serif';
+        ctx.fillText('— LOTTERY DRAW —',V_W/2,185);
+        // Bottom decorative line
+        ctx.fillStyle='#1a1410';
+        ctx.fillRect(V_W/2-40,215,80,2);
+    }
+    function dTT(ctx,t,x,y,tr){let cx=x;for(const c of t){ctx.fillText(c,cx,y);cx+=ctx.measureText(c).width+tr}}
+    function mTT(ctx,t,tr){let w=0;for(const c of t)w+=ctx.measureText(c).width+tr;return w-tr}
+    function dTTC(ctx,t,cx,y,tr){const w=mTT(ctx,t,tr);dTT(ctx,t,cx-w/2,y,tr)}
+    function prand(s){const x=Math.sin(s*12.9898)*43758.5453;return x-Math.floor(x)}
+
+    function drawCard(ctx,dateStr,names,st){
+        const cardX=60,cardW=V_W-120,rowH=78,rowGap=12,topPad=140;
+        const rowsH=names.length*rowH+(names.length-1)*rowGap;
+        const bannerH=st.phase==='reveal'?110:0;
+        const cardH=topPad+rowsH+bannerH+40;
+        const cardY=(V_H-cardH)/2+40;
+        ctx.fillStyle='rgba(26,20,16,.2)';ctx.fillRect(cardX+6,cardY+6,cardW,cardH);
+        const g=ctx.createLinearGradient(cardX,cardY,cardX+cardW,cardY+cardH);
+        g.addColorStop(0,'#faf3e0');g.addColorStop(1,'#f4ead5');
+        ctx.fillStyle=g;ctx.fillRect(cardX,cardY,cardW,cardH);
+        ctx.strokeStyle='#1a1410';ctx.lineWidth=2;ctx.strokeRect(cardX,cardY,cardW,cardH);
+        ctx.strokeStyle='rgba(26,20,16,.25)';ctx.lineWidth=1;ctx.strokeRect(cardX+8,cardY+8,cardW-16,cardH-16);
+        const bW=220,bH=50,bX=cardX+28,bY=cardY+40;
+        ctx.fillStyle='#1a1410';ctx.fillRect(bX,bY,bW,bH);
+        ctx.fillStyle='#f4ead5';ctx.font='700 22px "Cormorant Garamond", serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(dateStr.toUpperCase(),bX+bW/2,bY+bH/2+1);
+        let rY=cardY+topPad;
+        names.forEach((name,i)=>{
+            const isR=st.phase==='rolling'&&st.rollingIdx===i;
+            const isW=st.phase==='reveal'&&st.winnerIdx===i;
+            const isE=st.phase==='reveal'&&st.winnerIdx!==i;
+            let offX=0;if(isR)offX=(prand(st.shakeSeed+i)-.5)*6;
+            const rX=cardX+28,rW=cardW-56;
+            let scale=isW?(st.winnerScale||1.04):1;
+            const sX=(rW*(scale-1))/2,sY=(rowH*(scale-1))/2;
+            const rx=rX-sX+offX,ry=rY-sY,rw=rW*scale,rh=rowH*scale;
+            if(isW){ctx.fillStyle='rgba(26,20,16,.5)';ctx.fillRect(rx+4,ry+4,rw,rh)}
+            ctx.fillStyle=isW?'#8b1a1a':(isR?'#e8dcc0':'#f4ead5');
+            ctx.globalAlpha=isE?.25:1;ctx.fillRect(rx,ry,rw,rh);
+            ctx.strokeStyle=isW?'#8b1a1a':'rgba(26,20,16,.3)';ctx.lineWidth=isW?2:1;ctx.strokeRect(rx,ry,rw,rh);
+            ctx.fillStyle='#b8893f';ctx.font='italic 300 30px "Cormorant Garamond", serif';
+            ctx.textAlign='left';ctx.textBaseline='middle';
+            ctx.fillText(String(i+1).padStart(2,'0'),rx+24,ry+rh/2+2);
+            ctx.fillStyle=isW?'#f4ead5':'#1a1410';
+            ctx.font='700 28px "Noto Serif TC", serif';
+            const nX=rx+80,nY=ry+rh/2+2;dTT(ctx,name,nX,nY,4);
+            if(isE){ctx.strokeStyle='#1a1410';ctx.lineWidth=2;ctx.beginPath();const tw=mTT(ctx,name,4);ctx.moveTo(nX,nY);ctx.lineTo(nX+tw,nY);ctx.stroke()}
+            if(isW){ctx.fillStyle='#b8893f';ctx.font='700 20px serif';ctx.textAlign='right';ctx.fillText('◆',rx+rw-18,ry+rh/2+2)}
+            ctx.globalAlpha=1;rY+=rowH+rowGap;
+        });
+        if(st.phase==='reveal'&&st.bannerAlpha>0){
+            ctx.globalAlpha=st.bannerAlpha;
+            const bx=cardX+28,by=rY+14,bw=cardW-56,bh=86;
+            ctx.strokeStyle='#1a1410';ctx.lineWidth=1.5;ctx.setLineDash([6,4]);
+            ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+bw,by);ctx.moveTo(bx,by+bh);ctx.lineTo(bx+bw,by+bh);ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle='#b8893f';ctx.font='700 16px "Cormorant Garamond", serif';
+            ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('— 中  选 —',bx+bw/2,by+24);
+            ctx.fillStyle='#8b1a1a';ctx.font='900 40px "Noto Serif TC", serif';
+            dTTC(ctx,names[st.winnerIdx],bx+bw/2,by+58,8);
+            ctx.globalAlpha=1;
+        }
+    }
+
+    function buildStoryboard(){
+        const frames=[];
+        for(let i=0;i<Math.floor(1.2*FPS);i++)frames.push({type:'title'});
+        groups.forEach(g=>{
+            const n=g.names.length,wi=Math.floor(Math.random()*n);
+            for(let i=0;i<Math.floor(.8*FPS);i++)frames.push({type:'card',dateStr:g.date,names:g.names,state:{phase:'rolling',rollingIdx:-1,shakeSeed:i}});
+            let ticks=0,delayMs=60,cur=0;
+            const total=18+wi;
+            while(!(ticks>=total&&cur%n===wi)){
+                const ri=cur%n,fc=Math.max(1,Math.round(delayMs/1000*FPS));
+                for(let f=0;f<fc;f++)frames.push({type:'card',dateStr:g.date,names:g.names,state:{phase:'rolling',rollingIdx:ri,shakeSeed:ticks*10+f}});
+                ticks++;if(ticks>12)delayMs+=30;cur++;
+                if(ticks>80)break;
+            }
+            const pf=Math.floor(.6*FPS);
+            for(let i=0;i<pf;i++){
+                const t=i/(pf-1);
+                let sc=t<.5?1+.08*(t/.5):1.08-.04*((t-.5)/.5);
+                const ba=Math.min(1,Math.max(0,(t-.2)/.6));
+                frames.push({type:'card',dateStr:g.date,names:g.names,state:{phase:'reveal',winnerIdx:wi,winnerScale:sc,bannerAlpha:ba}});
+            }
+            for(let i=0;i<Math.floor(1.8*FPS);i++)frames.push({type:'card',dateStr:g.date,names:g.names,state:{phase:'reveal',winnerIdx:wi,winnerScale:1.04,bannerAlpha:1}});
+        });
+        return frames;
+    }
+    function renderFrame(ctx,f){drawBG(ctx);drawHeader(ctx);if(f.type==='card')drawCard(ctx,f.dateStr,f.names,f.state)}
+
+    /* ============ Inline MP4 muxer (ISO BMFF, video-only H.264) ============ */
+    const te = new TextEncoder();
+    const u32 = n => new Uint8Array([(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255]);
+    const u16 = n => new Uint8Array([(n>>>8)&255,n&255]);
+    const u8  = n => new Uint8Array([n&255]);
+    function cat(arrs){let L=0;for(const a of arrs)L+=a.byteLength;const o=new Uint8Array(L);let p=0;for(const a of arrs){o.set(a instanceof Uint8Array?a:new Uint8Array(a),p);p+=a.byteLength}return o}
+    function box(type,...payload){const body=cat(payload);return cat([u32(8+body.byteLength),te.encode(type),body])}
+    function fbox(type,ver,flags,...payload){return box(type,u8(ver),new Uint8Array([(flags>>>16)&255,(flags>>>8)&255,flags&255]),...payload)}
+
+    function ftyp(){return box('ftyp',te.encode('isom'),u32(512),te.encode('isom'),te.encode('iso2'),te.encode('avc1'),te.encode('mp41'))}
+
+    function avc1(w,h,desc){
+        const p=cat([
+            new Uint8Array(6),u16(1),new Uint8Array(16),
+            u16(w),u16(h),u32(0x00480000),u32(0x00480000),
+            u32(0),u16(1),new Uint8Array(32),u16(0x0018),u16(0xffff)
+        ]);
+        return box('avc1',p,box('avcC',desc));
+    }
+    function stsd(w,h,desc){return fbox('stsd',0,0,u32(1),avc1(w,h,desc))}
+    function stts(cnt,delta){return fbox('stts',0,0,u32(1),u32(cnt),u32(delta))}
+    function stss(keys){const p=[u32(keys.length)];for(const k of keys)p.push(u32(k));return fbox('stss',0,0,...p)}
+    function stsc(){return fbox('stsc',0,0,u32(1),u32(1),u32(1),u32(1))}
+    function stsz(sizes){const p=[u32(0),u32(sizes.length)];for(const s of sizes)p.push(u32(s));return fbox('stsz',0,0,...p)}
+    function stco(offs){const p=[u32(offs.length)];for(const o of offs)p.push(u32(o));return fbox('stco',0,0,...p)}
+    function dref(){return fbox('dref',0,0,u32(1),fbox('url ',0,1))}
+    function dinf(){return box('dinf',dref())}
+    function vmhd(){return fbox('vmhd',0,1,u16(0),new Uint8Array(6))}
+    function hdlr(){return fbox('hdlr',0,0,u32(0),te.encode('vide'),u32(0),u32(0),u32(0),te.encode('VideoHandler\0'))}
+    function stbl(sizes,offs,keys,total,w,h,desc){return box('stbl',stsd(w,h,desc),stts(total,1),stss(keys),stsc(),stsz(sizes),stco(offs))}
+    function minf(...c){return box('minf',...c)}
+    function mdhd(ts,dur){return fbox('mdhd',0,0,u32(0),u32(0),u32(ts),u32(dur),u16(0x55c4),u16(0))}
+    function mdia(ts,dur,stblBox){return box('mdia',mdhd(ts,dur),hdlr(),minf(vmhd(),dinf(),stblBox))}
+    function tkhd(dur,w,h){
+        return fbox('tkhd',0,0x7,
+            u32(0),u32(0),u32(1),u32(0),u32(dur),new Uint8Array(8),
+            u16(0),u16(0),u16(0),u16(0),
+            u32(0x00010000),u32(0),u32(0),u32(0),u32(0x00010000),u32(0),u32(0),u32(0),u32(0x40000000),
+            u32(w<<16),u32(h<<16));
+    }
+    function trak(dur,w,h,mdiaBox){return box('trak',tkhd(dur,w,h),mdiaBox)}
+    function mvhd(ts,dur){
+        return fbox('mvhd',0,0,
+            u32(0),u32(0),u32(ts),u32(dur),
+            u32(0x00010000),u16(0x0100),u16(0),new Uint8Array(8),
+            u32(0x00010000),u32(0),u32(0),u32(0),u32(0x00010000),u32(0),u32(0),u32(0),u32(0x40000000),
+            new Uint8Array(24),u32(2));
+    }
+    function moov(ts,dur,trakBox){return box('moov',mvhd(ts,dur),trakBox)}
+
+    function buildMP4(chunks,w,h,fps,desc){
+        const ts=fps,total=chunks.length,dur=total;
+        const sizes=chunks.map(c=>c.data.byteLength);
+        const keys=[];chunks.forEach((c,i)=>{if(c.isKey)keys.push(i+1)});
+        const mdatData=cat(chunks.map(c=>c.data));
+
+        function make(offsets){
+            const s=stbl(sizes,offsets,keys,total,w,h,desc);
+            return moov(ts,dur,trak(dur,w,h,mdia(ts,dur,s)));
+        }
+        const ftypBox=ftyp();
+        const dummyMoov=make(new Array(total).fill(0));
+        const mdatStart=ftypBox.byteLength+dummyMoov.byteLength;
+        const dataStart=mdatStart+8;
+        const offs=[];let cur=dataStart;
+        for(const c of chunks){offs.push(cur);cur+=c.data.byteLength}
+        let moovBox=make(offs);
+        if(moovBox.byteLength!==dummyMoov.byteLength){
+            const diff=moovBox.byteLength-dummyMoov.byteLength;
+            for(let i=0;i<offs.length;i++)offs[i]+=diff;
+            moovBox=make(offs);
+        }
+        const mdatSize=8+mdatData.byteLength;
+        const mdatHeader=cat([u32(mdatSize),te.encode('mdat')]);
+        return cat([ftypBox,moovBox,mdatHeader,mdatData]);
+    }
+
+    /* ============ Orchestrator ============ */
+    async function generateVideo(){
+        if(typeof VideoEncoder==='undefined'){
+            showDone('无法生成 MP4','此浏览器不支持 WebCodecs API。<br><br>请把此 HTML 下载到电脑，用<b>桌面版 Chrome / Edge（94+）</b>开启。<br>Safari、 Firefox 不支持。');
+            return;
+        }
+        try{
+            showProgress('预热字体…',0.02);
+            const warm=document.createElement('canvas');warm.width=V_W;warm.height=V_H;
+            const wctx=warm.getContext('2d');drawBG(wctx);drawHeader(wctx);
+            drawCard(wctx,groups[0].date,groups[0].names,{phase:'rolling',rollingIdx:0,shakeSeed:0});
+            if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+            await new Promise(r=>setTimeout(r,200));
+
+            showProgress('规划时序…',0.04);
+            const sb=buildStoryboard();
+            const total=sb.length;
+
+            showProgress('检查编码器…',0.06);
+            const codec='avc1.42E01F';
+            const sup=await VideoEncoder.isConfigSupported({codec,width:V_W,height:V_H,bitrate:3_000_000,framerate:FPS,avc:{format:'avc'}});
+            if(!sup.supported)throw new Error('此浏览器不支持 H.264 (avc1) 编码');
+
+            const chunks=[];let description=null,encErr=null;
+            const enc=new VideoEncoder({
+                output:(chunk,meta)=>{
+                    if(meta&&meta.decoderConfig&&meta.decoderConfig.description)description=meta.decoderConfig.description;
+                    const b=new Uint8Array(chunk.byteLength);chunk.copyTo(b);
+                    chunks.push({data:b,isKey:chunk.type==='key'});
+                },
+                error:e=>{encErr=e;console.error(e)}
+            });
+            enc.configure({codec,width:V_W,height:V_H,bitrate:3_000_000,framerate:FPS,avc:{format:'avc'}});
+
+            const canvas=document.createElement('canvas');canvas.width=V_W;canvas.height=V_H;
+            const ctx=canvas.getContext('2d');
+            const frameDurUs=Math.round(1_000_000/FPS);
+
+            for(let i=0;i<total;i++){
+                if(encErr)throw encErr;
+                renderFrame(ctx,sb[i]);
+                const vf=new VideoFrame(canvas,{timestamp:i*frameDurUs,duration:frameDurUs});
+                enc.encode(vf,{keyFrame:i%FPS===0});
+                vf.close();
+                if(i%6===0){
+                    showProgress(`编码中  ${i+1} / ${total}`,0.06+(i/total)*0.88);
+                    while(enc.encodeQueueSize>12)await new Promise(r=>setTimeout(r,8));
+                }
+            }
+            showProgress('完成编码…',0.94);
+            await enc.flush();enc.close();
+            if(!description)throw new Error('未收到 AVC decoder 设置');
+            if(!chunks.length)throw new Error('没有编码输出');
+
+            showProgress('封装 MP4…',0.97);
+            const desc=description instanceof Uint8Array?description:new Uint8Array(description);
+            const bytes=buildMP4(chunks,V_W,V_H,FPS,desc);
+
+            const blob=new Blob([bytes],{type:'video/mp4'});
+            const url=URL.createObjectURL(blob);
+            const stamp=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+            const a=document.createElement('a');a.href=url;a.download=`抽签_${stamp}.mp4`;
+            document.body.appendChild(a);a.click();document.body.removeChild(a);
+            setTimeout(()=>URL.revokeObjectURL(url),3000);
+
+            const kb=Math.round(blob.size/1024);
+            const sec=(total/FPS).toFixed(1);
+            showDone('✓ 已生成 MP4',`文件大小：${kb} KB<br>时长：${sec} 秒<br>格式：H.264 / MP4<br><br>可直接传到 LINE 播放。`);
+        }catch(err){
+            console.error(err);
+            showDone('生成影片失败',(err&&err.message)?err.message:'未知错误');
+        }
+    }
+
+    renderEditor();
+    renderDrawCards();
+</script>
+</body>
+</html>

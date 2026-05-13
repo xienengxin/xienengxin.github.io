@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二维码生成工具</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --primary-light: #7209b7;
+            --secondary-color: #f8f9fa;
+            --text-color: #333;
+            --text-light: #6c757d;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #eef1f5 100%);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 550px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        #app:hover {
+            box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.15), 0 10px 15px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .app-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+        }
+
+        .app-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .app-header p {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .app-body {
+            padding: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-color);
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: var(--transition);
+            background-color: var(--secondary-color);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: #e9ecef;
+            transform: translateY(-2px);
+        }
+
+        .message {
+            padding: 12px 16px;
+            margin: 0 0 20px 0;
+            border-radius: 8px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .message.error {
+            color: #721c24;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.success {
+            color: #155724;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+
+        #qrcode-container {
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            display: none;
+            width: fit-content;
+        }
+
+        #qrcode-container.visible {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        #qrcode {
+            transition: transform 0.3s ease;
+        }
+
+        #qrcode-container:hover #qrcode {
+            transform: scale(1.02);
+        }
+
+        .placeholder-text {
+            color: var(--text-light);
+            padding: 40px 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 13px;
+            color: var(--text-light);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 480px) {
+            .app-body {
+                padding: 20px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="app-header">
+        <h1>
+            <i class="fas fa-qrcode"></i>
+            二维码生成工具
+        </h1>
+        <p>快速将文本、网址转换为二维码</p>
+    </div>
+
+    <div class="app-body">
+        <div class="input-group">
+            <label for="inputText" class="form-label">输入内容</label>
+            <input
+                    type="text"
+                    id="inputText"
+                    v-model="inputText"
+                    class="form-control"
+                    placeholder="请输入网址、文本等内容"
+                    @keydown.enter="generateQRCode"
+            >
+        </div>
+
+        <div class="button-group">
+            <button class="btn btn-primary" @click="generateQRCode">
+                <i class="fas fa-magic"></i>
+                生成二维码
+            </button>
+            <button class="btn btn-secondary" @click="downloadQRCode" :disabled="!showQRCode">
+                <i class="fas fa-download"></i>
+                下载
+            </button>
+            <button class="btn btn-secondary" @click="clearAll">
+                <i class="fas fa-trash"></i>
+                清空
+            </button>
+        </div>
+
+        <div class="message error" v-if="errorMessage">
+            <i class="fas fa-exclamation-circle"></i>
+            {{ errorMessage }}
+        </div>
+        <div class="message success" v-if="successMessage">
+            <i class="fas fa-check-circle"></i>
+            {{ successMessage }}
+        </div>
+
+        <div id="qrcode-container" :class="{ 'visible': showQRCode }">
+            <div class="placeholder-text" v-if="!showQRCode">二维码将显示在这里</div>
+            <div id="qrcode"></div>
+        </div>
+
+        <div class="footer-note">
+            支持文本、网址等内容生成二维码
+        </div>
+    </div>
+</div>
+
+<script>
+    window.onload = function() {
+        if (typeof Vue === 'undefined') {
+            alert('Vue库加载失败，请刷新页面重试');
+            return;
+        }
+
+        if (typeof QRCode === 'undefined') {
+            alert('二维码生成库加载失败，请刷新页面重试');
+            return;
+        }
+
+        const defaultCorrectLevel = {
+            L: 1,
+            M: 0,
+            Q: 3,
+            H: 2
+        };
+
+        new Vue({
+            el: '#app',
+            data: {
+                inputText: '',
+                errorMessage: '',
+                successMessage: '',
+                showQRCode: false,
+                qrCodeInstance: null
+            },
+            methods: {
+                generateQRCode() {
+                    this.errorMessage = '';
+                    this.successMessage = '';
+
+                    if (!this.inputText.trim()) {
+                        this.errorMessage = '请输入内容后再生成';
+                        return;
+                    }
+
+                    try {
+                        // 清空前一次的二维码
+                        this.clearPreviousQRCode();
+
+                        const correctLevel = QRCode.CorrectLevel
+                            ? QRCode.CorrectLevel.L
+                            : defaultCorrectLevel.L;
+
+                        // 生成新二维码
+                        this.qrCodeInstance = new QRCode(document.getElementById('qrcode'), {
+                            text: this.inputText,
+                            width: 250,
+                            height: 250,
+                            colorDark: "#333333",
+                            colorLight: "#ffffff",
+                            correctLevel: correctLevel
+                        });
+
+                        this.showQRCode = true;
+                        this.successMessage = '二维码生成成功';
+
+                    } catch (error) {
+                        this.errorMessage = '生成失败: ' + error.message;
+                        console.error('生成二维码错误:', error);
+                        this.showQRCode = false;
+                    }
+                },
+                clearPreviousQRCode() {
+                    if (this.qrCodeInstance && typeof this.qrCodeInstance.clear === 'function') {
+                        this.qrCodeInstance.clear();
+                    }
+
+                    const qrcodeDiv = document.getElementById('qrcode');
+                    if (qrcodeDiv) {
+                        qrcodeDiv.innerHTML = '';
+                    }
+
+                    this.qrCodeInstance = null;
+                },
+                clearAll() {
+                    this.inputText = '';
+                    this.errorMessage = '';
+                    this.successMessage = '';
+                    this.showQRCode = false;
+                    this.clearPreviousQRCode();
+                },
+                downloadQRCode() {
+                    if (!this.showQRCode || !this.qrCodeInstance) return;
+
+                    try {
+                        // 创建下载链接
+                        const canvas = document.querySelector('#qrcode canvas');
+                        if (canvas) {
+                            const link = document.createElement('a');
+                            link.download = 'qrcode.png';
+                            link.href = canvas.toDataURL('image/png');
+                            link.click();
+                            this.successMessage = '二维码已下载';
+                        } else {
+                            // 处理img标签的情况
+                            const img = document.querySelector('#qrcode img');
+                            if (img) {
+                                const link = document.createElement('a');
+                                link.download = 'qrcode.png';
+                                link.href = img.src;
+                                link.click();
+                                this.successMessage = '二维码已下载';
+                            }
+                        }
+                    } catch (error) {
+                        this.errorMessage = '下载失败: ' + error.message;
+                        console.error('下载二维码错误:', error);
+                    }
+                }
+            }
+        });
+    };
+</script>
+</body>
+</html>

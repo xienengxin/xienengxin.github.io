@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Workspace | 个人极客控制台</title>
+
+    <!-- 修复：添加 ?v=2 强制刷新缓存，确保图标显示 -->
+    <link rel="icon" href="favicon.ico?v=2" type="image/x-icon">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+</head>
+<body>
+
+<div id="app-background"></div>
+
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="logo-area">
+            <div class="logo-icon"><i class="ri-command-fill"></i></div>
+            <span>Nexus</span>
+        </div>
+
+        <nav class="nav-menu">
+            <button class="nav-item active" data-target="dashboard">
+                <i class="ri-dashboard-3-line"></i>
+                <span>仪表盘</span>
+            </button>
+            <button class="nav-item" data-target="password">
+                <i class="ri-shield-keyhole-line"></i>
+                <span>密码库</span>
+            </button>
+            <button class="nav-item" data-target="favicon">
+                <i class="ri-image-edit-line"></i>
+                <span>图标工场</span>
+            </button>
+            <button class="nav-item" id="rest-timer-btn">
+                <i class="ri-cup-line"></i>
+                <span>休息提醒</span>
+                <span class="badge hidden" id="rest-badge">Running</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button id="bg-setting-btn" class="icon-btn" title="更换背景">
+                <i class="ri-image-2-line"></i>
+            </button>
+            <button id="theme-toggle" class="icon-btn">
+                <i class="ri-moon-line"></i>
+            </button>
+            <div class="clock-mini" id="mini-clock">--:--</div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <section id="dashboard" class="page-section active">
+            <header class="section-header">
+                <div>
+                    <h1>个人概览</h1>
+                    <p class="subtitle">欢迎回来，保持高效与专注。</p>
+                </div>
+                <div class="weather-container">
+                    <div id="weather-widget" class="weather-badge glass-effect" title="点击切换城市">
+                        <i class="ri-loader-2-line animate-spin"></i> Loading...
+                    </div>
+                    <div id="city-input-wrapper" class="hidden">
+                        <input type="text" id="city-input" placeholder="输入城市拼音(如 Beijing)">
+                    </div>
+                </div>
+            </header>
+
+            <div class="dashboard-grid">
+                <div class="card stat-card hover-action" id="focus-card">
+                    <div class="stat-icon bg-blue"><i class="ri-play-circle-line" id="focus-icon"></i></div>
+                    <div class="stat-info">
+                        <span class="label" id="focus-label">点击开始专注</span>
+                        <span class="value" id="focus-timer">00:00:00</span>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon bg-green"><i class="ri-task-line"></i></div>
+                    <div class="stat-info">
+                        <span class="label">任务完成率</span>
+                        <span class="value" id="task-completion-rate">0%</span>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon bg-purple"><i class="ri-calendar-check-line"></i></div>
+                    <div class="stat-info">
+                        <span class="label">本周趋势</span>
+                        <span class="value text-up">+12% <i class="ri-arrow-right-up-line"></i></span>
+                    </div>
+                </div>
+
+                <div class="card chart-card">
+                    <h3>效率趋势</h3>
+                    <div class="chart-container">
+                        <canvas id="efficiencyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card todo-card">
+                    <div class="card-header">
+                        <h3>待办事项 <span id="todo-count" class="count-badge">0/0</span></h3>
+                        <button id="add-task-btn" class="icon-btn-sm"><i class="ri-add-line"></i></button>
+                    </div>
+                    <div class="input-group todo-input hidden" id="todo-input-area">
+                        <input type="text" id="new-task-input" placeholder="输入任务按回车...">
+                    </div>
+                    <ul id="todo-list" class="task-list"></ul>
+                </div>
+
+                <div class="card countdown-card">
+                    <h3>目标倒计时</h3>
+                    <div class="countdown-item">
+                        <div class="cd-info">
+                            <span class="cd-title">距离周末</span>
+                            <span class="cd-date">Friday 18:00</span>
+                        </div>
+                        <div class="cd-timer" id="cd-weekend">00:00:00</div>
+                    </div>
+                    <div class="countdown-item">
+                        <div class="cd-info">
+                            <span class="cd-title">2026 新年</span>
+                            <span class="cd-date">2026-01-01</span>
+                        </div>
+                        <div class="cd-timer" id="cd-year">00 天 00:00</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="password" class="page-section">
+            <header class="section-header">
+                <h1>安全中心</h1>
+                <p class="subtitle">所有密码仅本地生成，绝不上传云端。</p>
+            </header>
+
+            <div class="password-container">
+                <div class="card password-display-card">
+                    <div class="password-output">
+                        <input type="text" id="generated-password" readonly placeholder="点击生成...">
+                        <button id="copy-btn" class="btn-primary">
+                            <i class="ri-file-copy-line"></i> 复制
+                        </button>
+                    </div>
+                    <div class="strength-meter">
+                        <div class="strength-bar">
+                            <div id="strength-fill" style="width: 0%"></div>
+                        </div>
+                        <span id="strength-text">Strength</span>
+                    </div>
+                </div>
+
+                <div class="card settings-card">
+                    <h3>配置选项</h3>
+                    <div class="setting-row">
+                        <label>长度: <span id="length-val">16</span></label>
+                        <input type="range" id="pass-length" min="6" max="64" value="16">
+                    </div>
+                    <div class="checkbox-grid">
+                        <label class="custom-checkbox"><input type="checkbox" id="inc-uppercase" checked><span class="checkmark"></span> 大写字母</label>
+                        <label class="custom-checkbox"><input type="checkbox" id="inc-numbers" checked><span class="checkmark"></span> 数字</label>
+                        <label class="custom-checkbox"><input type="checkbox" id="inc-symbols" checked><span class="checkmark"></span> 特殊符号</label>
+                        <label class="custom-checkbox"><input type="checkbox" id="exc-ambiguous"><span class="checkmark"></span> 排除易混字符</label>
+                    </div>
+                    <button id="generate-btn" class="btn-full">
+                        <i class="ri-refresh-line"></i> 生成新密码
+                    </button>
+                </div>
+
+                <div class="card history-card">
+                    <h3>本次会话历史</h3>
+                    <ul id="password-history-list"></ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="favicon" class="page-section">
+            <header class="section-header">
+                <h1>图标工场</h1>
+                <p class="subtitle">裁剪、预览并生成全平台图标 (支持 .ico)。</p>
+            </header>
+            <div class="icon-workspace">
+                <div class="card upload-card" id="drop-zone">
+                    <div class="upload-content">
+                        <i class="ri-upload-cloud-2-line"></i>
+                        <h3>点击上传或拖拽图片</h3>
+                        <p>支持 JPG/PNG，将在本地处理</p>
+                        <input type="file" id="file-upload" accept="image/*" hidden>
+                    </div>
+                </div>
+
+                <div class="preview-area hidden" id="preview-area">
+                    <div class="card preview-card">
+                        <h3>实时预览</h3>
+                        <div class="preview-row">
+                            <div class="browser-mockup">
+                                <div class="browser-tab">
+                                    <img id="preview-favicon" src="" class="fav-mini">
+                                    <span>My Website</span>
+                                    <i class="ri-close-line"></i>
+                                </div>
+                                <div class="browser-bar">example.com</div>
+                            </div>
+                            <div class="app-mockup">
+                                <div class="app-icon-wrapper">
+                                    <img id="preview-app-icon" src="">
+                                </div>
+                                <span>App</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card download-card">
+                        <button id="download-zip-btn" class="btn-primary btn-full">
+                            <i class="ri-download-zip-line"></i> 下载图标包 (含 .ico)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="cropper-modal" class="modal hidden">
+                <div class="modal-content card" style="width: 600px; max-width: 95%;">
+                    <div class="modal-header">
+                        <h3>图片裁剪</h3>
+                        <button class="icon-btn-sm close-cropper"><i class="ri-close-line"></i></button>
+                    </div>
+                    <div class="cropper-wrapper" style="height: 400px; background: #333;">
+                        <img id="image-to-crop" style="max-width: 100%;">
+                    </div>
+                    <div class="modal-footer">
+                        <button id="confirm-crop-btn" class="btn-primary btn-full">确认裁剪</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- 休息提醒模态框 -->
+<div id="rest-modal" class="modal hidden">
+    <div class="modal-content card">
+        <div class="modal-header">
+            <h3>☕ 休息提醒设置</h3>
+            <button class="icon-btn-sm close-modal"><i class="ri-close-line"></i></button>
+        </div>
+        <div class="modal-body">
+            <p>设置倒计时，提醒自己活动一下。</p>
+            <div class="sound-select-group">
+                <label><i class="ri-volume-up-line"></i> 提示音效：</label>
+                <select id="rest-sound-select">
+                    <!-- 新增：中文语音选项 -->
+                    <option value="voice" selected>🗣️ 中文语音 (推荐)</option>
+                    <option value="bell">🔔 清脆铃声 (Bell)</option>
+                    <option value="alarm">⏰ 数字闹钟 (Digital)</option>
+                    <option value="bird">🐦 鸟鸣 (Bird)</option>
+                </select>
+            </div>
+            <div class="time-presets">
+                <button class="preset-btn" data-time="25">25m</button>
+                <button class="preset-btn" data-time="45">45m</button>
+                <button class="preset-btn" data-time="60">1h</button>
+            </div>
+            <div class="custom-time-input">
+                <input type="number" id="custom-rest-minutes" placeholder="自定义分钟" min="1">
+            </div>
+            <div class="timer-display-area hidden" id="rest-countdown-area">
+                <span id="rest-countdown-display">00:00</span>
+                <button id="cancel-rest-btn" class="btn-danger-sm">停止</button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="start-rest-btn" class="btn-primary btn-full">开始计时</button>
+        </div>
+    </div>
+</div>
+
+<input type="file" id="bg-upload-input" accept="image/*" hidden>
+
+<div id="toast-container"></div>
+<audio id="alarm-sound" preload="auto"></audio>
+
+<script src="app.js"></script>
+</body>
+</html>

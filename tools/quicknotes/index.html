@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/x-icon" href="favicon.ico"> <!-- 网站图标 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickNotes - 极简记事本</title>
+    <style>
+        :root {
+            /* 日间模式变量 */
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-main: #2c3e50;
+            --text-sub: #7f8c8d;
+            --accent: #3498db;
+            --border: #e0e0e0;
+            --shadow: 0 10px 25px rgba(0,0,0,0.05);
+            --btn-hover: #f7f9fc;
+            --scrollbar-thumb: #cbd5e0;
+        }
+
+        [data-theme="dark"] {
+            /* 夜间模式变量 */
+            --bg-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-main: #e0e0e0;
+            --text-sub: #a0a0a0;
+            --accent: #5dade2;
+            --border: #404040;
+            --shadow: 0 10px 25px rgba(0,0,0,0.3);
+            --btn-hover: #3d3d3d;
+            --scrollbar-thumb: #555;
+        }
+
+        * { box-sizing: border-box; transition: background-color 0.3s, color 0.3s; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 主容器 */
+        .container {
+            width: 90%;
+            max-width: 800px;
+            height: 90vh;
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 顶部 Header */
+        header {
+            padding: 15px 25px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg); /* 防止滚动穿透 */
+        }
+
+        .brand {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        button:hover {
+            background-color: var(--btn-hover);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* 记事区域 */
+        .editor-wrapper {
+            flex: 1;
+            position: relative;
+            display: flex;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100%;
+            border: none;
+            resize: none;
+            padding: 25px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            background: transparent;
+            color: var(--text-main);
+            outline: none;
+            font-family: inherit; /* 默认继承，可JS切换 */
+        }
+
+        textarea::placeholder {
+            color: var(--text-sub);
+            opacity: 0.5;
+        }
+
+        /* 自定义滚动条 */
+        textarea::-webkit-scrollbar { width: 8px; }
+        textarea::-webkit-scrollbar-track { background: transparent; }
+        textarea::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); border-radius: 4px; }
+
+        /* 底部状态栏 */
+        footer {
+            padding: 10px 25px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            background: var(--card-bg);
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #ccc;
+        }
+        .status-dot.saved { background-color: #2ecc71; }
+        .status-dot.saving { background-color: #f1c40f; }
+
+        .time-display {
+            font-variant-numeric: tabular-nums; /* 等宽数字，防止时间跳动 */
+        }
+
+        /* 切换开关样式 */
+        .theme-toggle {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+        }
+
+        /* 字体类 */
+        .font-mono { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; }
+        .font-hand { font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif; }
+
+        /* 移动端适配 */
+        @media (max-width: 600px) {
+            .container { width: 100%; height: 100vh; border-radius: 0; }
+            .btn-text { display: none; } /* 窄屏隐藏按钮文字 */
+            header { padding: 10px 15px; }
+            textarea { padding: 15px; font-size: 1rem; }
+            footer { flex-direction: column; gap: 10px; align-items: flex-start; }
+            .theme-toggle { position: absolute; right: 15px; bottom: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 头部 -->
+    <header>
+        <div class="brand">
+            <span>📝</span> QuickNotes
+        </div>
+        <div class="toolbar">
+            <button onclick="toggleFont()" title="切换字体">
+                <span>Aa</span>
+            </button>
+            <button onclick="downloadNote()" title="导出为TXT">
+                <span>📥</span> <span class="btn-text">导出</span>
+            </button>
+            <button onclick="clearNote()" title="清空内容">
+                <span>🗑️</span> <span class="btn-text">清空</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- 编辑区 -->
+    <div class="editor-wrapper">
+        <textarea id="noteArea" placeholder="在此处开始输入... (Ctrl+S 保存)" spellcheck="false"></textarea>
+    </div>
+
+    <!-- 底部 -->
+    <footer>
+        <div class="stats">
+            <span>字数: <b id="wordCount">0</b></span>
+            <span class="status-indicator">
+                    <span class="status-dot saved" id="statusDot"></span>
+                    <span id="saveStatus">已保存</span>
+                </span>
+        </div>
+
+        <div style="display: flex; gap: 20px; align-items: center;">
+            <span class="time-display" id="currentTime">--:--</span>
+            <div class="theme-toggle" onclick="toggleTheme()">
+                <span id="themeIcon">🌙</span>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<script>
+    // DOM 元素获取
+    const textarea = document.getElementById('noteArea');
+    const wordCountEl = document.getElementById('wordCount');
+    const saveStatusEl = document.getElementById('saveStatus');
+    const statusDot = document.getElementById('statusDot');
+    const timeEl = document.getElementById('currentTime');
+    const themeIcon = document.getElementById('themeIcon');
+
+    let saveTimeout;
+
+    // 1. 初始化加载
+    window.addEventListener('DOMContentLoaded', () => {
+        // 加载内容
+        const savedNote = localStorage.getItem('quickNotes_content');
+        if (savedNote) {
+            textarea.value = savedNote;
+            updateWordCount();
+        }
+
+        // 加载主题
+        const savedTheme = localStorage.getItem('quickNotes_theme');
+        if (savedTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            themeIcon.textContent = '☀️';
+        }
+
+        // 启动时钟
+        updateTime();
+        setInterval(updateTime, 1000);
+    });
+
+    // 2. 自动保存与输入监听
+    textarea.addEventListener('input', () => {
+        updateWordCount();
+        setStatus('saving');
+
+        // 防抖：停止输入 500ms 后执行保存
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+            saveToLocal();
+        }, 500);
+    });
+
+    // 3. 快捷键支持
+    document.addEventListener('keydown', (e) => {
+        // Ctrl + S
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            saveToLocal();
+        }
+        // Tab 键支持 (输入4个空格)
+        if (e.key === 'Tab' && document.activeElement === textarea) {
+            e.preventDefault();
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            textarea.value = textarea.value.substring(0, start) + "    " + textarea.value.substring(end);
+            textarea.selectionStart = textarea.selectionEnd = start + 4;
+            setStatus('saving');
+            saveToLocal();
+        }
+    });
+
+    // 核心功能函数
+    function saveToLocal() {
+        localStorage.setItem('quickNotes_content', textarea.value);
+        setStatus('saved');
+    }
+
+    function setStatus(status) {
+        if (status === 'saving') {
+            saveStatusEl.textContent = '保存中...';
+            statusDot.className = 'status-dot saving';
+        } else {
+            saveStatusEl.textContent = '已保存';
+            statusDot.className = 'status-dot saved';
+        }
+    }
+
+    function updateWordCount() {
+        const text = textarea.value;
+        // 简单的字数统计（含标点，去除收尾空格）
+        wordCountEl.textContent = text.length;
+    }
+
+    function clearNote() {
+        if (textarea.value.trim() === '') return;
+        if (confirm('确定要清空所有内容吗？此操作无法撤销。')) {
+            textarea.value = '';
+            saveToLocal();
+            updateWordCount();
+            textarea.focus();
+        }
+    }
+
+    function downloadNote() {
+        const text = textarea.value;
+        if (!text) {
+            alert('没有内容可导出！');
+            return;
+        }
+
+        const blob = new Blob([text], { type: 'text/plain' });
+        const anchor = document.createElement('a');
+
+        // 生成文件名: QuickNotes_2026-02-18.txt
+        const dateStr = new Date().toISOString().split('T')[0];
+        anchor.download = `QuickNotes_${dateStr}.txt`;
+
+        anchor.href = window.URL.createObjectURL(blob);
+        anchor.target = '_blank';
+        anchor.style.display = 'none';
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+    }
+
+    // 辅助功能函数
+    function updateTime() {
+        const now = new Date();
+        // 格式化为 2026-02-18 12:00
+        const dateStr = now.toISOString().split('T')[0];
+        const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+        timeEl.textContent = `${dateStr} ${timeStr}`;
+    }
+
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+        document.documentElement.setAttribute('data-theme', newTheme);
+        themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        localStorage.setItem('quickNotes_theme', newTheme);
+    }
+
+    function toggleFont() {
+        if (textarea.classList.contains('font-mono')) {
+            textarea.classList.remove('font-mono');
+            textarea.classList.add('font-hand');
+        } else if (textarea.classList.contains('font-hand')) {
+            textarea.classList.remove('font-hand');
+        } else {
+            textarea.classList.add('font-mono');
+        }
+        // 循环顺序：默认 -> 等宽 -> 手写 -> 默认
+    }
+</script>
+</body>
+
+</html>
