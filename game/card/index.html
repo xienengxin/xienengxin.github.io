@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🎴 记忆翻牌</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            touch-action: manipulation;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            font-size: 1.2em;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            box-sizing: border-box;
+        }
+
+        .card {
+            width: 100%;
+            padding-bottom: 100%;
+            position: relative;
+            background: white;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            box-sizing: border-box;
+        }
+
+        .card-inner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.4s ease;
+            border-radius: 12px;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            box-shadow: 0 0 20px rgba(255,255,255,0.8);
+        }
+
+        .card.matched .card-inner {
+            animation: pulse 0.5s ease;
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5em;
+            border-radius: 12px;
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            transform: rotateY(180deg);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-size: 1.5em;
+        }
+
+        .card-back::before {
+            content: "❓";
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: rotateY(180deg) scale(1); }
+            50% { transform: rotateY(180deg) scale(1.1); }
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+        }
+
+        .btn:hover, .btn:active {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.show {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 90%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            animation: slideIn 0.3s ease;
+        }
+
+        .modal-content h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .modal-content p {
+            font-size: 1.3em;
+            margin: 10px 0;
+            color: #333;
+        }
+
+        .modal-content .btn {
+            margin-top: 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @media (max-width: 480px) {
+            .grid {
+                gap: 8px;
+                padding: 8px;
+                max-width: 100%;
+            }
+
+            .card-front {
+                font-size: 2em;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .stats {
+                font-size: 1em;
+                gap: 10px;
+            }
+        }
+
+        @media (min-width: 481px) and (max-width: 768px) {
+            .grid {
+                max-width: 500px;
+                gap: 15px;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .grid {
+                max-width: 600px;
+                gap: 20px;
+            }
+        }
+
+        .instructions {
+            color: white;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>🎴 记忆翻牌</h1>
+    <div class="stats">
+        <div class="stat">⏱️ <span id="timer">00:00</span></div>
+        <div class="stat">🔄 <span id="moves">0</span></div>
+        <div class="stat">🎯 <span id="matches">0</span>/8</div>
+    </div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<button class="btn" id="restartBtn">🔄 重新开始</button>
+
+<p class="instructions">点击卡片翻牌，找到相同的配对！</p>
+
+<div class="modal" id="winModal">
+    <div class="modal-content">
+        <h2>🎉 恭喜通关！</h2>
+        <p>⏱️ 用时：<span id="finalTime">00:00</span></p>
+        <p>🔄 步数：<span id="finalMoves">0</span></p>
+        <p>⭐ 评价：<span id="rating">⭐⭐⭐</span></p>
+        <button class="btn" id="playAgainBtn">🎮 再来一局</button>
+    </div>
+</div>
+
+<script>
+    const emojis = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍒', '🥝', '🍑'];
+    let cards = [];
+    let flippedCards = [];
+    let matchedPairs = 0;
+    let moves = 0;
+    let timerInterval;
+    let seconds = 0;
+    let gameStarted = false;
+
+    const grid = document.getElementById('grid');
+    const timerDisplay = document.getElementById('timer');
+    const movesDisplay = document.getElementById('moves');
+    const matchesDisplay = document.getElementById('matches');
+    const restartBtn = document.getElementById('restartBtn');
+    const winModal = document.getElementById('winModal');
+    const playAgainBtn = document.getElementById('playAgainBtn');
+
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    function createCards() {
+        cards = [...emojis, ...emojis];
+        cards = shuffle(cards);
+        grid.innerHTML = '';
+
+        cards.forEach((emoji, index) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.dataset.index = index;
+            card.dataset.emoji = emoji;
+
+            const inner = document.createElement('div');
+            inner.className = 'card-inner';
+
+            const front = document.createElement('div');
+            front.className = 'card-front';
+            front.textContent = emoji;
+
+            const back = document.createElement('div');
+            back.className = 'card-back';
+
+            inner.appendChild(front);
+            inner.appendChild(back);
+            card.appendChild(inner);
+            card.addEventListener('click', flipCard);
+            grid.appendChild(card);
+        });
+    }
+
+    function flipCard() {
+        if (flippedCards.length >= 2) return;
+        if (this.classList.contains('flipped')) return;
+        if (this.classList.contains('matched')) return;
+
+        if (!gameStarted) {
+            gameStarted = true;
+            startTimer();
+        }
+
+        this.classList.add('flipped');
+        flippedCards.push(this);
+
+        if (flippedCards.length === 2) {
+            moves++;
+            movesDisplay.textContent = moves;
+            checkMatch();
+        }
+    }
+
+    function checkMatch() {
+        const [card1, card2] = flippedCards;
+
+        if (card1.dataset.emoji === card2.dataset.emoji) {
+            card1.classList.add('matched');
+            card2.classList.add('matched');
+            matchedPairs++;
+            matchesDisplay.textContent = matchedPairs;
+            flippedCards = [];
+
+            if (matchedPairs === 8) {
+                setTimeout(showWinModal, 500);
+            }
+        } else {
+            setTimeout(() => {
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+                flippedCards = [];
+            }, 1000);
+        }
+    }
+
+    function startTimer() {
+        clearInterval(timerInterval);
+        seconds = 0;
+        timerInterval = setInterval(() => {
+            seconds++;
+            const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const secs = (seconds % 60).toString().padStart(2, '0');
+            timerDisplay.textContent = `${mins}:${secs}`;
+        }, 1000);
+    }
+
+    function showWinModal() {
+        clearInterval(timerInterval);
+        document.getElementById('finalTime').textContent = timerDisplay.textContent;
+        document.getElementById('finalMoves').textContent = moves;
+
+        let rating = '';
+        if (moves <= 12) rating = '⭐⭐⭐ 完美！';
+        else if (moves <= 16) rating = '⭐⭐ 不错！';
+        else rating = '⭐ 加油！';
+
+        document.getElementById('rating').textContent = rating;
+        winModal.classList.add('show');
+    }
+
+    function resetGame() {
+        clearInterval(timerInterval);
+        gameStarted = false;
+        flippedCards = [];
+        matchedPairs = 0;
+        moves = 0;
+        seconds = 0;
+
+        timerDisplay.textContent = '00:00';
+        movesDisplay.textContent = '0';
+        matchesDisplay.textContent = '0';
+
+        winModal.classList.remove('show');
+        createCards();
+    }
+
+    restartBtn.addEventListener('click', resetGame);
+    playAgainBtn.addEventListener('click', resetGame);
+
+    createCards();
+</script>
+</body>
+</html>
